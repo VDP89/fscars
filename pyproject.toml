@@ -1,0 +1,138 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fscars"
+version = "0.1.0"
+description = "Bolt-on correction primitive for AI coding agents."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Victor Daniel Del Puerto Gauto", email = "info@dgingenieriasrl.com" },
+]
+keywords = [
+    "claude-code",
+    "ai-agent",
+    "developer-tools",
+    "lucy-syndrome",
+    "functional-scars",
+    "llm-tooling",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "pydantic>=2.6",
+    "typer>=0.12",
+    "rich>=13.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[project.urls]
+Homepage = "https://github.com/Vdp89/fscars"
+Documentation = "https://github.com/Vdp89/fscars#readme"
+Issues = "https://github.com/Vdp89/fscars/issues"
+Repository = "https://github.com/Vdp89/fscars"
+Changelog = "https://github.com/Vdp89/fscars/blob/main/CHANGELOG.md"
+"Companion paper" = "https://doi.org/10.5281/zenodo.19555971"
+
+[project.scripts]
+fscar = "fscars.cli.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["fscars"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "fscars/",
+    "cookbook/",
+    "tests/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+
+# ---------------------------------------------------------------------------
+# Tooling
+# ---------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "slow: marks tests as slow (deselect with -m 'not slow')",
+    "integration: tests that touch the filesystem in a temp dir",
+]
+
+[tool.coverage.run]
+source = ["fscars"]
+branch = true
+omit = [
+    "fscars/adapters/claude_code/templates/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+fail_under = 80
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501",  # line too long — handled by formatter
+    "B008",  # function calls in defaults (typer uses them)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]
+"fscars/adapters/claude_code/templates/*.py.tmpl" = ["F", "E"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+plugins = ["pydantic.mypy"]
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false

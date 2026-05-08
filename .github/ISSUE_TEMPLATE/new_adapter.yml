@@ -1,0 +1,29 @@
+name: New adapter
+description: Propose support for a new AI coding agent.
+labels: [adapter, enhancement]
+body:
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "Codex CLI, Cursor, Aider, Continue.dev, ..."
+    validations:
+      required: true
+  - type: textarea
+    id: events
+    attributes:
+      label: Hook event types the platform supports
+      description: List the event types and when they fire.
+    validations:
+      required: true
+  - type: textarea
+    id: payload
+    attributes:
+      label: Payload shape
+      description: Example JSON the platform sends to a hook.
+      render: json
+  - type: textarea
+    id: install
+    attributes:
+      label: How a hook gets registered today
+      description: File paths, config commands, or upstream docs link.
