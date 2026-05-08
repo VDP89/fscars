@@ -30,6 +30,11 @@ jobs:
           pip install --user -e .
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      - name: Install ffmpeg (vhs-action bug workaround)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends ffmpeg
+
       - name: Render demo.gif with VHS
         uses: charmbracelet/vhs-action@v2
         with:
