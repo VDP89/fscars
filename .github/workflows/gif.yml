@@ -1,0 +1,48 @@
+name: Render demo GIF
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "assets/demo.tape"
+      - ".github/workflows/gif.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  vhs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install fscars (editable) + add user bin to PATH
+        run: |
+          python -m pip install --upgrade pip
+          pip install --user -e .
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Render demo.gif with VHS
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: assets/demo.tape
+
+      - name: Commit demo.gif if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/demo.gif
+          if git diff --staged --quiet; then
+            echo "demo.gif unchanged - skipping commit"
+            exit 0
+          fi
+          git commit -m "chore(assets): regenerate demo.gif from $(echo $GITHUB_SHA | cut -c1-7)"
+          git push
