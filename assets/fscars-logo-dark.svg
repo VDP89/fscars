@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" width="720" height="200" role="img" aria-label="Functional Scars">
+  <title>Functional Scars</title>
+  <defs>
+    <style>
+      .glyph-bg { fill: #FAF7F0; }
+      .glyph-fg { fill: #1F2937; }
+      .scar-line { stroke: #DC2626; stroke-width: 8; stroke-linecap: round; }
+      .wordmark { fill: #FAF7F0; font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace; font-weight: 800; font-size: 78px; letter-spacing: -2px; }
+      .tagline { fill: #94A3B8; font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif; font-weight: 500; font-size: 22px; letter-spacing: 1px; }
+    </style>
+  </defs>
+
+  <!-- Glyph: light square with charcoal monogram + red scar line -->
+  <rect class="glyph-bg" x="20" y="30" width="140" height="140" rx="22" ry="22"/>
+  <text class="glyph-fg" x="90" y="118"
+        text-anchor="middle"
+        font-family='"JetBrains Mono","Fira Code","Menlo","Consolas",monospace'
+        font-weight="800"
+        font-size="78"
+        letter-spacing="-2">fs</text>
+  <line class="scar-line" x1="46" y1="148" x2="134" y2="148"/>
+
+  <!-- Wordmark + tagline -->
+  <text class="wordmark" x="195" y="115">Functional Scars</text>
+  <line class="scar-line" x1="195" y1="135" x2="295" y2="135"/>
+  <text class="tagline" x="195" y="170">Bolt-on correction primitive for AI coding agents</text>
+</svg>

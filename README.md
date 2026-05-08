@@ -1,8 +1,10 @@
 <!-- markdownlint-disable MD033 -->
 <div align="center">
-  <h1>Functional Scars</h1>
-  <p><strong>Bolt-on correction primitive for AI coding agents.</strong></p>
-  <p>Stop explaining the same fix every session. Make corrections persist.</p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/fscars-logo-dark.svg">
+    <img src="assets/fscars-logo.svg" alt="Functional Scars" width="600">
+  </picture>
+  <p><strong>Stop explaining the same fix every session. Make corrections persist.</strong></p>
 
   <p>
     <a href="https://github.com/Vdp89/fscars/actions/workflows/ci.yml">
