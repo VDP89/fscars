@@ -30,15 +30,26 @@ jobs:
           pip install --user -e .
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Install ffmpeg (vhs-action bug workaround)
+      - name: Install ffmpeg + ttyd + JetBrains Mono
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends ffmpeg
+          sudo apt-get install -y --no-install-recommends \
+            ffmpeg \
+            ttyd \
+            fonts-jetbrains-mono \
+            chromium-browser
 
-      - name: Render demo.gif with VHS
-        uses: charmbracelet/vhs-action@v2
-        with:
-          path: assets/demo.tape
+      - name: Install VHS
+        env:
+          VHS_VERSION: "0.10.0"
+        run: |
+          curl -fsSL "https://github.com/charmbracelet/vhs/releases/download/v${VHS_VERSION}/vhs_${VHS_VERSION}_amd64.deb" \
+            -o /tmp/vhs.deb
+          sudo dpkg -i /tmp/vhs.deb || sudo apt-get install -fy
+          vhs --version
+
+      - name: Render demo.gif
+        run: vhs assets/demo.tape
 
       - name: Commit demo.gif if changed
         run: |
