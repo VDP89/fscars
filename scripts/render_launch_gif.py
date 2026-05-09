@@ -65,11 +65,16 @@ THEME_DARK = Theme("dark", NAVY, CREAM, NAVY, CREAM)
 # Geometry — the FINAL position of the logo (last frame)
 # ---------------------------------------------------------------------------
 
-# The icon (rounded square + monogram + scar line with stitches)
-ICON_FINAL_CX = 200
-ICON_CY = 180
+# The icon (rounded square + monogram + scar line with stitches).
+# ICON_FINAL_CX and the wordmark X are computed dynamically in main() so the
+# whole "icon + wordmark" block ends up centered horizontally regardless of
+# the wordmark's measured width. The placeholder values here are overwritten
+# before the first frame is rendered.
+ICON_FINAL_CX = 148
+ICON_CY = HEIGHT // 2  # vertical center of the frame
 ICON_SIDE = 120
 ICON_RADIUS = 18
+ICON_GAP = 24  # horizontal gap between icon and wordmark
 
 # The scar line lives slightly below the monogram inside the icon
 SCAR_HALF_WIDTH = 38
@@ -78,10 +83,10 @@ STITCH_LINE_WIDTH = 4
 STITCH_HALF_HEIGHT = 7
 N_STITCHES = 4
 
-# The wordmark
-WORDMARK_X = 282
-WORDMARK_Y = 165
-TAGLINE_Y = 220
+# The wordmark — also overwritten dynamically by compute_layout()
+WORDMARK_X = 232
+WORDMARK_Y = 157   # tuned so the (wordmark + 2 tagline lines) block is centered on ICON_CY
+TAGLINE_Y = 188
 
 # When the wound is "free-floating" (before the icon appears) it sits centered
 SCAR_INTRO_CX = WIDTH // 2
@@ -369,12 +374,33 @@ def render_frame(t: float, theme: Theme, fonts: dict) -> Image.Image:
 # ---------------------------------------------------------------------------
 
 
+def compute_layout(fonts: dict) -> None:
+    """Recenter the icon + wordmark block based on the wordmark's measured width.
+
+    Mutates ICON_FINAL_CX, WORDMARK_X. The wordmark/tagline Y positions are
+    set in module-level constants and assume ICON_CY = HEIGHT/2.
+    """
+    global ICON_FINAL_CX, WORDMARK_X
+    wordmark_text = "Functional Scars"
+    try:
+        wordmark_w = fonts["mono_word"].getlength(wordmark_text)
+    except AttributeError:
+        # PIL default font: rough fallback
+        wordmark_w = len(wordmark_text) * 16
+
+    total_w = ICON_SIDE + ICON_GAP + wordmark_w
+    icon_left = (WIDTH - total_w) / 2
+    ICON_FINAL_CX = int(icon_left + ICON_SIDE / 2)
+    WORDMARK_X = int(icon_left + ICON_SIDE + ICON_GAP)
+
+
 def render_gif(theme: Theme, output_path: Path) -> None:
     fonts = {
         "mono_glyph": _load_font(MONO_FONT_CANDIDATES, 60),
         "mono_word": _load_font(MONO_FONT_CANDIDATES, 28),
         "sans_tagline": _load_font(SANS_REGULAR_CANDIDATES, 16),
     }
+    compute_layout(fonts)
 
     frames: list[Image.Image] = []
     for i in range(N_FRAMES):
