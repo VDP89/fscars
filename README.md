@@ -2,7 +2,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/fscars-logo-dark.svg">
-    <img src="assets/fscars-logo.svg" alt="Functional Scars" width="600">
+    <img src="assets/fscars-logo.svg" alt="Functional Scars" width="360" style="max-width: 100%; height: auto;">
   </picture>
   <p><strong>Stop explaining the same fix every session. Make corrections persist.</strong></p>
 
