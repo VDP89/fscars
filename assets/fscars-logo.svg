@@ -2,15 +2,16 @@
   <title>Functional Scars</title>
   <defs>
     <style>
-      .glyph-bg { fill: #1F2937; }
-      .glyph-fg { fill: #FAF7F0; }
-      .scar-line { stroke: #DC2626; stroke-width: 8; stroke-linecap: round; }
-      .wordmark { fill: #1F2937; font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace; font-weight: 800; font-size: 78px; letter-spacing: -2px; }
+      .glyph-bg { fill: #0F1A2E; }
+      .glyph-fg { fill: #F5F1E8; }
+      .scar-line { stroke: #CC785C; stroke-width: 7; stroke-linecap: round; }
+      .stitch { stroke: #CC785C; stroke-width: 5; stroke-linecap: round; }
+      .wordmark { fill: #0F1A2E; font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace; font-weight: 800; font-size: 78px; letter-spacing: -2px; }
       .tagline { fill: #475569; font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif; font-weight: 500; font-size: 22px; letter-spacing: 1px; }
     </style>
   </defs>
 
-  <!-- Glyph: rounded square with monogram fs and a scar line at the bottom -->
+  <!-- Glyph: navy rounded square + monogram 'fs' + scar line with 4 stitches -->
   <rect class="glyph-bg" x="20" y="30" width="140" height="140" rx="22" ry="22"/>
   <text class="glyph-fg" x="90" y="118"
         text-anchor="middle"
@@ -18,10 +19,21 @@
         font-weight="800"
         font-size="78"
         letter-spacing="-2">fs</text>
+  <!-- scar line -->
   <line class="scar-line" x1="46" y1="148" x2="134" y2="148"/>
+  <!-- 4 stitches crossing the scar line vertically -->
+  <line class="stitch" x1="60"  y1="140" x2="60"  y2="156"/>
+  <line class="stitch" x1="80"  y1="140" x2="80"  y2="156"/>
+  <line class="stitch" x1="100" y1="140" x2="100" y2="156"/>
+  <line class="stitch" x1="120" y1="140" x2="120" y2="156"/>
 
   <!-- Wordmark + tagline -->
   <text class="wordmark" x="195" y="115">Functional Scars</text>
-  <line class="scar-line" x1="195" y1="135" x2="295" y2="135"/>
-  <text class="tagline" x="195" y="170">Bolt-on correction primitive for AI coding agents</text>
+  <!-- Wordmark scar line + 4 stitches -->
+  <line class="scar-line" x1="195" y1="135" x2="335" y2="135"/>
+  <line class="stitch" x1="215" y1="127" x2="215" y2="143"/>
+  <line class="stitch" x1="248" y1="127" x2="248" y2="143"/>
+  <line class="stitch" x1="282" y1="127" x2="282" y2="143"/>
+  <line class="stitch" x1="315" y1="127" x2="315" y2="143"/>
+  <text class="tagline" x="195" y="172">Bolt-on correction primitive for AI coding agents</text>
 </svg>

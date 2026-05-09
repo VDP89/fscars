@@ -19,19 +19,28 @@ input — the decisions here freeze a default, not a finished system.
 - **fscars** — the Python package and the repo name.
 - **fscar** — the CLI command (singular, like `git`).
 
-## Palette (provisional — option B from the planning doc)
+## Palette (refined v2 — DG navy + Anthropic warm fusion)
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| Charcoal | `#1F2937` | Primary text, dark backgrounds |
-| Cream | `#FAF7F0` | Light backgrounds, cards |
-| Red | `#DC2626` | "Blocked" semantics, critical accents |
-| Slate | `#475569` | Secondary text |
-| Mint | `#10B981` | "Passed" / OK semantics |
+| Navy | `#0F1A2E` | Primary dark, glyph background, wordmark on light |
+| Cream | `#F5F1E8` | Light backgrounds, glyph foreground |
+| Terracota | `#CC785C` | Primary accent — scar line, stitches, identity mark |
+| Slate | `#475569` | Tagline, secondary text |
+| Slate light | `#94A3B8` | Tagline on dark backgrounds |
+| Mint | `#10B981` | "Passed" / OK semantics in CLI output |
+| Red | `#DC2626` | Reserved for CLI "blocked" semantics only — NOT a brand asset color |
 
-The red is intentional: a scar that blocks a tool call needs an unambiguous
-visual signal. Compare to Anthropic Memory which uses neutral blue — fscars
-is louder by design.
+The terracota is the fusion the brand sits on: warm enough to belong with
+Anthropic's coral palette, dark enough to anchor next to DG's navy infra
+mark. It carries the scar line — a horizontal stroke crossed by four
+stitches — which is the identifying mark across logo, icon, and any future
+brand surface.
+
+Red `#DC2626` stays explicitly out of the brand assets. It is a semantic
+color reserved for the CLI, where a scar that blocks a tool call uses red
+to say "blocked, do not proceed." Mixing it into the logo would dilute that
+signal.
 
 ## Typography
 
