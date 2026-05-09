@@ -26,6 +26,14 @@
 
 ---
 
+## Why this exists
+
+A junior engineer reads the textbooks and learns the fundamentals — that is the floor. What turns the junior into a senior is the weight that mistakes leave behind: the migration that ran half-applied in production, the timezone bug that shipped to a customer, the build that broke at 2am. Those scars become heavier than any chapter of the book; they bend future decisions in a way pure knowledge cannot.
+
+AI coding agents come into your project with a strong prior — billions of tokens of training, especially on code. But the way *your* assistant behaves on *your* codebase is not just that prior; it is shaped by every correction you make along the way. The catch is that those corrections rarely survive: the next session starts from training again, and the model regresses to its statistical default in any area where the correction carries less weight than the prior. A functional scar is the anchor that gives your correction enough weight to bend the next decision.
+
+---
+
 ## What is a Functional Scar?
 
 A **scar** is what an operator's correction becomes when you make it deterministic. Not text presented to the model — code that runs outside the model, intercepts the moment of risk, and pushes back.
