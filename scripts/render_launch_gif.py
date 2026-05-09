@@ -2,13 +2,14 @@
 
 Storyboard (4.5 s loop, 30 fps -> 135 frames):
 
-    0.0 - 0.4 s  scar line fades in
-    0.4 - 1.4 s  four stitches pop in, one every 0.25 s
-    1.4 - 1.9 s  hold the closed wound
-    1.9 - 2.4 s  navy rounded square scales in around the wound
-    2.4 - 2.9 s  monogram 'fs' fades in inside the square
-    2.9 - 3.3 s  square slides left + wordmark 'Functional Scars' slides in from the right
-    3.3 - 4.5 s  hold the full logo
+    0.00 - 0.40 s  scar line fades in
+    0.40 - 1.40 s  four stitches pop in, one every 0.25 s
+    1.40 - 1.90 s  hold the closed wound
+    1.90 - 2.40 s  navy rounded square scales in around the wound
+    2.40 - 2.80 s  monogram 'fs' fades in inside the square
+    2.80 - 3.35 s  icon slides left to its final position (wordmark NOT visible yet)
+    3.35 - 3.85 s  wordmark 'Functional Scars' + tagline fade in from the right
+    3.85 - 4.50 s  hold the full logo
 
 Two outputs:
     assets/fscars-launch.gif       (light cream bg)
@@ -227,29 +228,40 @@ def render_frame(t: float, theme: Theme, fonts: dict) -> Image.Image:
     img = Image.new("RGB", (WIDTH, HEIGHT), theme.bg)
     draw = ImageDraw.Draw(img)
 
-    # Timeline phases in normalized [0, 1]
-    p1_line_in = (0.00, 0.09)
-    p2_stitches = (0.09, 0.31)        # 4 stitches across this window
-    p3_hold_wound = (0.31, 0.42)
-    p4_square_in = (0.42, 0.53)
-    p5_monogram = (0.53, 0.64)
-    p6_slide = (0.64, 0.74)
-    p7_hold_logo = (0.74, 1.00)
+    # Timeline phases in normalized [0, 1].
+    # The icon slide and the wordmark fade-in are now SEQUENTIAL, not
+    # overlapping, so the wordmark never starts drawing while the icon is
+    # still passing through its target X position.
+    p1_line_in     = (0.00, 0.09)
+    p2_stitches    = (0.09, 0.31)        # 4 stitches across this window
+    p3_hold_wound  = (0.31, 0.42)
+    p4_square_in   = (0.42, 0.53)
+    p5_monogram    = (0.53, 0.62)
+    p6_slide_icon  = (0.62, 0.74)        # icon slides left, wordmark NOT visible yet
+    p7_wordmark    = (0.74, 0.86)        # wordmark + tagline fade in (icon already settled)
+    p8_hold_logo   = (0.86, 1.00)
 
-    # ------- Compute icon transform (slides from center to its final left position) -------
-    if t >= p6_slide[0]:
-        s = clamp((t - p6_slide[0]) / (p6_slide[1] - p6_slide[0]))
+    # ------- Icon X transform: slides from center to its final left position -------
+    if t < p6_slide_icon[0]:
+        icon_cx = WIDTH // 2
+    elif t >= p6_slide_icon[1]:
+        icon_cx = ICON_FINAL_CX
+    else:
+        s = clamp((t - p6_slide_icon[0]) / (p6_slide_icon[1] - p6_slide_icon[0]))
         icon_cx = lerp(WIDTH // 2, ICON_FINAL_CX, ease_in_out(s))
+
+    # ------- Wordmark alpha: only after the icon has settled -------
+    if t >= p7_wordmark[0]:
+        s = clamp((t - p7_wordmark[0]) / (p7_wordmark[1] - p7_wordmark[0]))
         wordmark_alpha = ease_out(s)
     else:
-        icon_cx = WIDTH // 2
         wordmark_alpha = 0.0
 
     # The scar/icon vertical position holds at HEIGHT/2 until the icon appears
     if t < p4_square_in[0]:
         focus_cy = SCAR_INTRO_CY
     else:
-        s = clamp((t - p4_square_in[0]) / (p7_hold_logo[0] - p4_square_in[0]))
+        s = clamp((t - p4_square_in[0]) / (p6_slide_icon[0] - p4_square_in[0]))
         focus_cy = lerp(SCAR_INTRO_CY, ICON_CY, ease_in_out(s))
 
     # Inside the icon, the scar is always 38px below the monogram center
@@ -407,8 +419,15 @@ def render_gif(theme: Theme, output_path: Path) -> None:
         t = i / (N_FRAMES - 1) if N_FRAMES > 1 else 0.0
         frames.append(render_frame(t, theme, fonts))
 
-    # Quantize to 256 colors so the GIF stays small
-    palette_frames = [f.convert("P", palette=Image.Palette.ADAPTIVE, colors=128) for f in frames]
+    # Build a global palette from the LAST frame, which contains every visual
+    # element of the animation (icon + wordmark + tagline + scar). Quantizing
+    # each frame against this shared palette eliminates the "ghosting" you
+    # otherwise get when each frame computes its own adaptive palette and the
+    # inter-frame palette drift leaks across the transition.
+    palette_source = frames[-1].convert("P", palette=Image.Palette.ADAPTIVE, colors=128)
+    palette_frames = [
+        f.quantize(palette=palette_source, dither=Image.Dither.NONE) for f in frames
+    ]
     duration_ms = int(1000 / FPS)
 
     palette_frames[0].save(
@@ -417,8 +436,8 @@ def render_gif(theme: Theme, output_path: Path) -> None:
         append_images=palette_frames[1:],
         duration=duration_ms,
         loop=0,             # infinite loop
-        optimize=True,
-        disposal=2,         # restore to bg between frames (cleaner)
+        optimize=False,     # disable inter-frame optimization to avoid ghosting
+        disposal=2,         # restore to bg between frames so moving elements leave no trail
     )
     print(f"  -> {output_path.relative_to(output_path.parent.parent)} ({output_path.stat().st_size // 1024} KB, {len(frames)} frames)")
 
