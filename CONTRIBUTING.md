@@ -42,3 +42,8 @@ ruff check fscars cookbook tests
 
 By participating you agree to abide by our
 [Code of Conduct](.github/CODE_OF_CONDUCT.md).
+
+## Releasing
+
+Maintainers only. The full procedure (including the one-time PyPI trusted
+publisher setup) is in [RELEASE.md](RELEASE.md).

@@ -1,0 +1,93 @@
+name: Release to PyPI
+
+# Triggered by pushing a tag of the form v*.*.* on the main branch.
+# The workflow:
+#   1. Builds wheel + sdist with `python -m build`.
+#   2. Publishes both to PyPI via OIDC trusted publishers (no API token).
+#   3. Creates a GitHub Release with auto-generated notes from CHANGELOG.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Verify tag version matches pyproject.toml
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PKG_VERSION=$(python -c "import tomllib; print(tomllib.loads(open('pyproject.toml','rb').read().decode())['project']['version'])")
+          if [ "$TAG" != "$PKG_VERSION" ]; then
+            echo "::error::Tag v$TAG does not match pyproject.toml version $PKG_VERSION"
+            exit 1
+          fi
+          echo "Tag and pyproject.toml agree on version $PKG_VERSION"
+
+      - name: Build wheel + sdist
+        run: python -m build
+
+      - name: Validate distributions with twine
+        run: python -m twine check dist/*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # The 'pypi' environment is what couples this workflow to the trusted
+    # publisher configured at https://pypi.org/manage/account/publishing/
+    environment:
+      name: pypi
+      url: https://pypi.org/p/fscars
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: Create GitHub Release
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create release with auto-generated notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          gh release create "$VERSION" dist/* \
+            --title "$VERSION" \
+            --generate-notes

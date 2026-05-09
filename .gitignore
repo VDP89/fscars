@@ -73,3 +73,4 @@ demo/example_project/__pycache__/
 # Local environment overrides
 .env.local
 *.local
+dist/
