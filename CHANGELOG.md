@@ -11,9 +11,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Demo GIF rendered with VHS (`assets/demo.tape` storyboard ready in planning doc).
 - Logo + brand assets.
-- PyPI publication of v0.1.0.
 - Homebrew tap.
 - Codex CLI adapter once upstream hook API stabilises.
+
+## [0.2.0] — 2026-05-26
+
+Validation layers + dashboard + CLI pipeline. Spun out of seven weeks of
+production operation at DG Ingenieria SRL.
+
+### Added
+
+- **`fscars.validation`** — three-tier loop for turning observed
+  opportunities into auditable outcomes:
+  - **Capa 4** (`fscars.validation.rules`) — deterministic per-scar rules
+    classifier with `RulesEngine`, `apply_decisions`, `summarize`, and a
+    reference `line_count_classifier` to copy-paste against.
+  - **Capa 3** (`fscars.validation.llm`) — `LLMClassifier` that shells out
+    to the local `claude` CLI via `subprocess.run` with UTF-8 + replace
+    error handling and `shutil.which` shim resolution (Windows-safe);
+    configurable model, confidence threshold, prompt template, and
+    `ThreadPoolExecutor` workers. `apply_verdict` writes the decision back
+    to the opportunity row, gating on threshold.
+  - **Capa 5** (`fscars.validation.cross_link`) — `cross_link_fires_opps`
+    pairs observed opportunities with actual fires by `(scar_id,
+    session_id, timestamp window, filename)`; `real_coverage` reports
+    matched / missed / coverage per scar.
+  - **Outcome marker** (`fscars.validation.outcome`) — `OutcomeMarker`
+    classifies and applies retroactive fire outcomes
+    (`error_prevented`, `false_positive`, `error_repeated`,
+    `error_despite_fire`, `unknown`), with a `mark_manually` path that
+    flags rows as human-reviewed.
+- **`fscars.io.safe_jsonl.safe_save_jsonl`** — file-locked atomic JSONL
+  writes with field-level merge by `event_id` for concurrent pipeline
+  safety. Stale locks (>120s) are auto-broken so a crashed writer cannot
+  deadlock the pipeline.
+- **`fscars.dashboard`** — markdown + self-contained HTML metrics
+  dashboard with parametric `BRAND_COLORS` palette (`DEFAULT_BRAND` ships
+  a neutral slate/blue scheme), period filtering (`all / 7d / 30d / 90d`),
+  per-scar table, health flags, and LLM-cost estimation.
+- **`fscars.core.opp_log`** — `read_opps`, `save_opps`, `log_opportunity`
+  helpers that mirror `fscars.core.log`. `StoreLayout` now exposes
+  `opps_file` at `.fscars/logs/opportunities.jsonl`.
+- **CLI commands**: `fscar validate` runs Capa 4 over opportunities (with
+  optional `--classifiers MODULE:FUNC` extension point); `fscar
+  dashboard` renders the metrics summary; `fscar audit` chains
+  validate → cross-link → dashboard end to end.
+- **Cookbook**: `cookbook/scars/import_aware_imports.py` — AST-based
+  detection of edits that actually import a watched package, plus a
+  disabled example (`DocxImportReminderScar`) showing the pipeline-path +
+  usage-hint escape hatch. Generalised from the production fix to a v1
+  hook that had a 100% false-positive rate.
+
+### Changed
+
+- `README.md` — new "Validation layers" section and updated command table.
+- `pyproject.toml` — version bumped 0.1.0 → 0.2.0.
+
+### Tests
+
+- 96 new tests covering `io.safe_jsonl`, every `validation` submodule, the
+  dashboard renderer, opportunity log, CLI smoke tests for the three new
+  commands (with a regression for `FireRecord.event_id` UUID JSON
+  serialisation), and the import-aware cookbook scar. Coverage on the new
+  modules: 90% global, 79%+ per module.
+
+### Acknowledgments
+
+The validation layer architecture in this release was developed and
+validated in production at **[DG Ingenieria SRL](https://dgingenieriasrl.com)**
+([Victor Del Puerto](https://victordelpuerto.com)) during May 2026: seven
+weeks of operation across 915 fires and 3,785 captured opportunities, with
+five bugs of instrumentation caught and patched along the way. The runtime
+that produced the data set lives in the DG operator workspace; only the
+domain-neutral abstractions (the engine, IO, classifier shapes, dashboard
+renderer, and AST-aware hook template) are released here, free of any
+project-specific paths or content.
 
 ## [0.1.0] — 2026-05-08
 
@@ -47,5 +119,6 @@ Initial alpha. Bootstrapped during a single session at DG Ingenieria SRL.
 - Engine swallows scar exceptions for the same reason — a buggy scar in the
   registry does not crash the dispatch.
 
-[Unreleased]: https://github.com/Vdp89/fscars/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Vdp89/fscars/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Vdp89/fscars/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Vdp89/fscars/releases/tag/v0.1.0
