@@ -5,7 +5,17 @@ from __future__ import annotations
 import typer
 
 from fscars import __version__
-from fscars.cli.commands import disable, doctor, init, list_cmd, log_cmd, stats
+from fscars.cli.commands import (
+    audit,
+    dashboard,
+    disable,
+    doctor,
+    init,
+    list_cmd,
+    log_cmd,
+    stats,
+    validate,
+)
 
 app = typer.Typer(
     name="fscar",
@@ -21,6 +31,9 @@ app.command("log", help="Show recent fires.")(log_cmd.run)
 app.command("stats", help="Compute persistence metrics from fires.jsonl.")(stats.run)
 app.command("disable", help="Disable a scar without deleting it.")(disable.run)
 app.command("doctor", help="Diagnose installation and hook wiring.")(doctor.run)
+app.command("validate", help="Run Capa 4 rules over opportunities.")(validate.run)
+app.command("dashboard", help="Render MD + HTML metrics dashboard.")(dashboard.run)
+app.command("audit", help="Run validate + cross-link + dashboard pipeline.")(audit.run)
 
 
 @app.callback(invoke_without_command=True)
