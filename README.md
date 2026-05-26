@@ -22,7 +22,7 @@
   </p>
 </div>
 
-> Status: **alpha (v0.1.0)**. Core engine, Claude Code adapter, and 5 starter scars are working. Demo GIF, PyPI release, and Codex adapter are on the roadmap. Read [CHANGELOG.md](CHANGELOG.md) for the current state.
+> Status: **alpha (v0.2.0)**. Core engine, Claude Code adapter, 5 starter scars, and the validation layers (`fscars.validation`) — a three-tier loop for turning observations into auditable outcomes — are working. PyPI release and Codex adapter remain on the roadmap. Read [CHANGELOG.md](CHANGELOG.md) for the current state.
 
 ---
 
@@ -88,6 +88,9 @@ Once installed, every Claude Code tool call passes through the engine. When a sc
 | `fscar stats` | Compute fire counts, latency p50/p99, tokens added |
 | `fscar disable <scar_id>` | Disable without deleting (use `--enable` to restore) |
 | `fscar doctor` | Diagnose installation and hook wiring |
+| `fscar validate` | Run Capa 4 deterministic rules over observed opportunities |
+| `fscar dashboard` | Render markdown + HTML metrics from fires + opportunities |
+| `fscar audit` | Validate + cross-link fires↔opportunities + render dashboard |
 | `fscar --version` | Print the installed version |
 
 The hook entrypoint is `python -m fscars.run_hook`. Single command across every event type — no per-scar hook scripts.
@@ -129,9 +132,30 @@ The engine reads stdin, parses through the right adapter, dispatches to every ma
 | `csv_encoding.py` | Requires explicit `encoding="utf-8"` in `pandas.read_csv` |
 | `avoid_negative_framing.py` | Blocks "we don't do X" patterns in marketing copy |
 | `subagent_coverage_report.py` | Reminds the operator to ask subagents for a coverage report |
+| `import_aware_imports.py` | AST-based detection of writes that import a watched package — see [cookbook_import_aware.md](docs/cookbook_import_aware.md) |
 | `_template.py` | Copy-paste starting point for new scars |
 
 See [`cookbook/scars/README.md`](cookbook/scars/README.md) for the contract and the 5-invariant checklist.
+
+---
+
+## Validation layers
+
+Once you have observation in place, the next problem is precision: out of every hundred fires, how many actually prevented an error? `fscars.validation` is a three-tier loop developed in production during May 2026 that downgrades the labelling problem from "operator stares at thousands of rows" to "operator confirms an edge slice automation cannot resolve":
+
+1. **Capa 4** — deterministic rules per scar. Free, predictable, resolves most clearly-true and clearly-false opportunities.
+2. **Capa 3** — LLM classifier (subprocess to the local `claude` CLI) for what Capa 4 leaves ambiguous. Configurable threshold, parallel workers.
+3. **Capa 5** — cross-link the observed opportunities to actual hook fires so coverage stops being a proxy.
+
+A `fscars.dashboard` module renders the resulting metrics as markdown + self-contained HTML; `fscars.io.safe_jsonl` guards concurrent pipeline writes with file-locked atomic merges.
+
+The CLI shortcut for the common case:
+
+```bash
+fscar audit --classifiers myapp.scars:register --period 30d
+```
+
+Full architecture, examples, and the cross-link / outcome marker details: [docs/advanced_validation.md](docs/advanced_validation.md).
 
 ---
 

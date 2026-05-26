@@ -30,6 +30,11 @@ class StoreLayout:
         return self.logs_dir / "fires.jsonl"
 
     @property
+    def opps_file(self) -> Path:
+        """Observed opportunities log (input to the validation pipeline)."""
+        return self.logs_dir / "opportunities.jsonl"
+
+    @property
     def disabled_file(self) -> Path:
         return self.root / "disabled.txt"
 
