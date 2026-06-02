@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `mypy fscars` now passes under the repository strict configuration by adding explicit JSON-row types across the validation, dashboard, IO, adapter, and hook-entrypoint modules.
+- `fscar init` no longer mangles its "wired hook entry" message on Windows. The relative descriptor was run through `pathlib` (`project_root / wired`), which rewrote the `/` in `.codex/fscars.json` to `\` and broke `test_init_codex_wires_agents_and_manifest` on every Windows CI job (macOS and Linux passed because their separator is already `/`); the descriptor is now echoed verbatim.
+
+### Tests
+
+- Added `tests/cli/test_init_claude_code.py` so the default `claude_code` install path is exercised end-to-end through the CLI across the macOS / Linux / Windows matrix, matching the existing Codex coverage and guarding against the path-separator regression on every adapter.
 
 ### Planned
 

@@ -7,8 +7,8 @@
   <p><strong>Stop explaining the same fix every session. Make corrections persist.</strong></p>
 
   <p>
-    <a href="https://github.com/Vdp89/fscars/actions/workflows/ci.yml">
-      <img alt="CI" src="https://img.shields.io/badge/CI-pending-lightgrey">
+    <a href="https://github.com/VDP89/fscars/actions/workflows/ci.yml">
+      <img alt="CI" src="https://github.com/VDP89/fscars/actions/workflows/ci.yml/badge.svg">
     </a>
     <a href="LICENSE">
       <img alt="License" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg">
@@ -22,7 +22,7 @@
   </p>
 </div>
 
-> Status: **alpha (v0.2.0)**. Core engine, Claude Code adapter, Codex instruction-mode installer, 5 starter scars, and the validation layers (`fscars.validation`) — a three-tier loop for turning observations into auditable outcomes — are working. PyPI release and native Codex hook blocking remain on the roadmap. Read [CHANGELOG.md](CHANGELOG.md) for the current state.
+> Status: **alpha**. `pip install fscars` is live on PyPI (v0.2.0). Core engine, Claude Code adapter, 5 starter scars, and the validation layers (`fscars.validation`) — a three-tier loop for turning observations into auditable outcomes — ship in that release; the Codex instruction-mode installer is merged on `main` and lands in the next release. Native Codex hook blocking remains on the roadmap. Read [CHANGELOG.md](CHANGELOG.md) for the current state.
 
 ---
 
@@ -55,7 +55,8 @@ This repository is the first installable implementation of those invariants.
 ## Quick start
 
 ```bash
-pip install fscars            # PyPI release pending — for now: pip install -e .
+pip install fscars            # v0.2.0 on PyPI
+# the Codex adapter below is on main until the next release: pip install -e .
 cd your-project
 fscar init                    # creates .fscars/ + wires Claude Code
 fscar init --adapter codex    # creates .fscars/ + writes Codex AGENTS.md guidance

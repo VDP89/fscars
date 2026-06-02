@@ -1,0 +1,49 @@
+"""Smoke tests for `fscar init --adapter claude_code` (the default adapter).
+
+Mirrors test_init_codex.py so the Claude Code install path is exercised
+end-to-end through the CLI across the macOS / Linux / Windows CI matrix.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from typer.testing import CliRunner
+
+from fscars.adapters.claude_code import ClaudeCodeAdapter
+from fscars.cli.main import app
+
+runner = CliRunner()
+
+
+def _wired_commands(settings_path: Path) -> list[str]:
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    return [
+        entry.get("command")
+        for entries in settings.get("hooks", {}).values()
+        for entry in entries
+    ]
+
+
+def test_init_claude_code_wires_settings(tmp_path: Path):
+    result = runner.invoke(app, ["init", str(tmp_path), "--adapter", "claude_code"])
+
+    assert result.exit_code == 0, result.output
+    # The forward-slash descriptor must survive into the message on every OS
+    # (regression guard for the Windows pathlib separator bug).
+    assert ".claude/settings.json" in result.output
+    assert (tmp_path / ".fscars").exists()
+    settings_path = tmp_path / ".claude" / "settings.json"
+    assert settings_path.exists()
+    assert ClaudeCodeAdapter.HOOK_COMMAND in _wired_commands(settings_path)
+
+
+def test_init_defaults_to_claude_code(tmp_path: Path):
+    # No --adapter flag: claude_code is the default, so settings.json is wired.
+    result = runner.invoke(app, ["init", str(tmp_path)])
+
+    assert result.exit_code == 0, result.output
+    settings_path = tmp_path / ".claude" / "settings.json"
+    assert settings_path.exists()
+    assert ClaudeCodeAdapter.HOOK_COMMAND in _wired_commands(settings_path)
