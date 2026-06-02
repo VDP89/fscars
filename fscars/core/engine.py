@@ -60,7 +60,7 @@ class ScarRegistry:
         registry = cls()
         try:
             # We import lazily to avoid circulars at package import time.
-            from cookbook import scars as scars_pkg  # type: ignore[import-not-found]
+            from cookbook import scars as scars_pkg
         except ImportError:
             return registry
 

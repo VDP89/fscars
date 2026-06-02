@@ -24,7 +24,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 MatchMethod = Literal[
     "timestamp+session+filename",
@@ -88,21 +88,21 @@ def filename_from_notes(notes: str) -> str:
     return normalize_filename(notes.split(":", 1)[1])
 
 
-OppFilenameFn = Callable[[dict], str]
-FireFilenameFn = Callable[[dict], str]
+OppFilenameFn = Callable[[dict[str, Any]], str]
+FireFilenameFn = Callable[[dict[str, Any]], str]
 
 
-def _default_opp_filename(opp: dict) -> str:
+def _default_opp_filename(opp: dict[str, Any]) -> str:
     return filename_from_notes(opp.get("notes", ""))
 
 
-def _default_fire_filename(fire: dict) -> str:
+def _default_fire_filename(fire: dict[str, Any]) -> str:
     return filename_from_trigger(fire.get("trigger_match", ""))
 
 
 def cross_link_fires_opps(
-    fires: list[dict],
-    opps: list[dict],
+    fires: list[dict[str, Any]],
+    opps: list[dict[str, Any]],
     *,
     window_sec: float = 5.0,
     dedup: bool = True,
@@ -120,7 +120,7 @@ def cross_link_fires_opps(
     mutated. When ``dedup=True``, each fire's ``event_id`` matches at most
     one opportunity.
     """
-    fire_index: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    fire_index: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for fire in fires:
         key = (fire.get(scar_id_field, ""), fire.get(session_id_field, ""))
         fire_index[key].append(fire)
@@ -192,7 +192,7 @@ def cross_link_fires_opps(
 
 
 def real_coverage(
-    opps: list[dict],
+    opps: list[dict[str, Any]],
     *,
     scar_id_field: str = "scar_id",
 ) -> dict[str, dict[str, float | int | None]]:
@@ -202,7 +202,7 @@ def real_coverage(
     denominator is zero).
     """
     out: dict[str, dict[str, float | int | None]] = {}
-    by_scar: dict[str, list[dict]] = defaultdict(list)
+    by_scar: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for opp in opps:
         by_scar[opp.get(scar_id_field, "")].append(opp)
     for scar, rows in by_scar.items():

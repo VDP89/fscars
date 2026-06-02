@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Codex instruction-mode installer** — `fscar init --adapter codex` now writes an idempotent `AGENTS.md` block plus `.codex/fscars.json`, registers the `codex` run-hook adapter name, and documents the tested rollout plan in `docs/codex_integration_plan.md`. Native Codex pre-tool blocking remains a roadmap item until a stable hook API is available.
+
+### Fixed
+
+- `mypy fscars` now passes under the repository strict configuration by adding explicit JSON-row types across the validation, dashboard, IO, adapter, and hook-entrypoint modules.
+
 ### Planned
 
 - Demo GIF rendered with VHS (`assets/demo.tape` storyboard ready in planning doc).
 - Logo + brand assets.
 - Homebrew tap.
-- Codex CLI adapter once upstream hook API stabilises.
+- Codex native hook mode once upstream hook API stabilises.
 
 ## [0.2.0] — 2026-05-26
 

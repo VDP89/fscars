@@ -30,7 +30,7 @@ import subprocess
 from collections.abc import Callable, Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal, cast
 
 LLMStatus = Literal["ok", "parse_fail", "skipped_file_not_found", "error"]
 
@@ -73,7 +73,7 @@ class LLMVerdict:
     raw_response: str = ""
 
 
-FileResolver = Callable[[dict], str | None]
+FileResolver = Callable[[dict[str, Any]], str | None]
 """Callable that returns the textual content for an opportunity, or ``None``
 if no file could be resolved (in which case the row is tagged
 ``skipped_file_not_found`` without an LLM call).
@@ -129,7 +129,7 @@ class LLMClassifier:
         if not self.claude_cli:
             self.claude_cli = shutil.which("claude") or "claude"
 
-    def build_prompt(self, opp: dict, file_content: str) -> str:
+    def build_prompt(self, opp: dict[str, Any], file_content: str) -> str:
         scar_id = opp.get(self.scar_id_field, "")
         return self.prompt_template.format(
             scar_id=scar_id,
@@ -160,7 +160,7 @@ class LLMClassifier:
             return f"__ERROR__: {exc}"
 
     @staticmethod
-    def _parse_response(text: str) -> dict | None:
+    def _parse_response(text: str) -> dict[str, Any] | None:
         if not text or text.startswith("__ERROR__"):
             return None
         start = text.find("{")
@@ -171,11 +171,14 @@ class LLMClassifier:
             data = json.loads(text[start : end + 1])
         except json.JSONDecodeError:
             return None
-        if "validated" in data and "confidence" in data:
-            return data
+        if not isinstance(data, dict):
+            return None
+        parsed = cast(dict[str, Any], data)
+        if "validated" in parsed and "confidence" in parsed:
+            return parsed
         return None
 
-    def classify_one(self, opp: dict) -> LLMVerdict:
+    def classify_one(self, opp: dict[str, Any]) -> LLMVerdict:
         eid = opp.get(self.event_id_field)
         content = self.file_resolver(opp) if self.file_resolver else ""
         if content is None:
@@ -201,7 +204,7 @@ class LLMClassifier:
 
     def classify_many(
         self,
-        opps: Iterable[dict],
+        opps: Iterable[dict[str, Any]],
     ) -> Iterator[LLMVerdict]:
         """Yield verdicts as they complete. Order is not preserved when
         ``workers > 1`` — match by ``event_id`` to apply results.
@@ -219,7 +222,7 @@ class LLMClassifier:
 
 
 def apply_verdict(
-    opp: dict,
+    opp: dict[str, Any],
     verdict: LLMVerdict,
     *,
     threshold: float,

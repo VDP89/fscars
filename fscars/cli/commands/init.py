@@ -7,6 +7,7 @@ from pathlib import Path
 import typer
 
 from fscars.adapters.claude_code import ClaudeCodeAdapter
+from fscars.adapters.codex import CodexAdapter
 from fscars.core.store import default_store
 
 
@@ -35,6 +36,9 @@ def run(
     if adapter == "claude_code":
         ClaudeCodeAdapter().install(project_root)
         wired = ".claude/settings.json"
+    elif adapter == "codex":
+        CodexAdapter().install(project_root)
+        wired = "AGENTS.md + .codex/fscars.json"
     else:
         raise typer.BadParameter(f"Unknown adapter: {adapter}")
 
