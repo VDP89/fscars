@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from fscars.adapters.base import Adapter
 from fscars.core.payload import HookEventType, HookPayload
@@ -33,7 +34,7 @@ class ClaudeCodeAdapter(Adapter):
 
     name = "claude_code"
 
-    def parse_stdin(self, raw: dict) -> HookPayload | None:
+    def parse_stdin(self, raw: dict[str, Any]) -> HookPayload | None:
         """Convert Claude Code's stdin payload to a normalized HookPayload."""
         if not isinstance(raw, dict):
             return None
@@ -71,8 +72,8 @@ class ClaudeCodeAdapter(Adapter):
         if output.is_empty:
             return "{}"
 
-        payload: dict = {}
-        hook_specific: dict = {}
+        payload: dict[str, Any] = {}
+        hook_specific: dict[str, Any] = {}
         if output.additional_context:
             hook_specific["additionalContext"] = output.additional_context
         if output.block:

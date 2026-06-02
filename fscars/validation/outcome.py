@@ -24,6 +24,7 @@ from collections import Counter
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Any
 
 VALID_OUTCOMES: tuple[str, ...] = (
     "unknown",
@@ -34,7 +35,7 @@ VALID_OUTCOMES: tuple[str, ...] = (
 )
 
 OutcomeDecision = tuple[str, str]  # (outcome, reason)
-OutcomeClassifier = Callable[[dict], OutcomeDecision]
+OutcomeClassifier = Callable[[dict[str, Any]], OutcomeDecision]
 
 
 @dataclass
@@ -56,7 +57,7 @@ class OutcomeMarker:
     def register(self, scar_id: str, classifier: OutcomeClassifier) -> None:
         self.classifiers[scar_id] = classifier
 
-    def classify_one(self, fire: dict) -> OutcomeDecision | None:
+    def classify_one(self, fire: dict[str, Any]) -> OutcomeDecision | None:
         clf = self.classifiers.get(fire.get(self.scar_id_field, ""))
         if clf is None:
             return None
@@ -70,7 +71,7 @@ class OutcomeMarker:
 
     def classify_many(
         self,
-        fires: Iterable[dict],
+        fires: Iterable[dict[str, Any]],
         *,
         skip_marked: bool = True,
     ) -> list[OutcomeDecision | None]:
@@ -88,7 +89,7 @@ class OutcomeMarker:
 
     def apply(
         self,
-        fires: list[dict],
+        fires: list[dict[str, Any]],
         decisions: list[OutcomeDecision | None],
         *,
         marker: str = "auto_classify_rules",
@@ -116,7 +117,7 @@ class OutcomeMarker:
 
     def mark_manually(
         self,
-        fires: list[dict],
+        fires: list[dict[str, Any]],
         event_id: str,
         outcome: str,
         *,
@@ -143,7 +144,7 @@ class OutcomeMarker:
         return False
 
 
-def _is_human_marked(fire: dict) -> bool:
+def _is_human_marked(fire: dict[str, Any]) -> bool:
     outcome = fire.get("outcome")
     return (
         bool(outcome)
@@ -153,7 +154,7 @@ def _is_human_marked(fire: dict) -> bool:
 
 
 def outcome_stats(
-    fires: list[dict],
+    fires: list[dict[str, Any]],
     *,
     scar_id_field: str = "scar_id",
 ) -> dict[str, dict[str, int]]:

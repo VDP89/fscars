@@ -7,6 +7,7 @@ from pathlib import Path
 import typer
 
 from fscars.adapters.claude_code import ClaudeCodeAdapter
+from fscars.adapters.codex import CodexAdapter
 from fscars.core.store import default_store
 
 
@@ -35,6 +36,9 @@ def run(
     if adapter == "claude_code":
         ClaudeCodeAdapter().install(project_root)
         wired = ".claude/settings.json"
+    elif adapter == "codex":
+        CodexAdapter().install(project_root)
+        wired = "AGENTS.md + .codex/fscars.json"
     else:
         raise typer.BadParameter(f"Unknown adapter: {adapter}")
 
@@ -45,7 +49,7 @@ def run(
         )
     else:
         typer.echo(f"[OK] fscars already initialized at {store.root}")
-    typer.echo(f"[OK] Wired hook entry into {project_root / wired}")
+    typer.echo(f"[OK] Wired hook entry into {wired}")
     typer.echo("")
     typer.echo("Next: copy a starter scar from `cookbook/scars/`, or run")
     typer.echo("      `fscar fire <name> \"<rule>\"` to register one inline.")

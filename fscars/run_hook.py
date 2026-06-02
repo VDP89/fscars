@@ -14,17 +14,20 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from typing import Any, cast
 
 from fscars.adapters.base import Adapter
 from fscars.adapters.claude_code import ClaudeCodeAdapter
+from fscars.adapters.codex import CodexAdapter
 from fscars.core import engine
 
 _ADAPTERS: dict[str, type[Adapter]] = {
     "claude_code": ClaudeCodeAdapter,
+    "codex": CodexAdapter,
 }
 
 
-def _read_stdin() -> dict | None:
+def _read_stdin() -> dict[str, Any] | None:
     try:
         raw = sys.stdin.read()
     except Exception:
@@ -32,7 +35,10 @@ def _read_stdin() -> dict | None:
     if not raw:
         return None
     try:
-        return json.loads(raw)
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            return None
+        return cast(dict[str, Any], data)
     except json.JSONDecodeError:
         return None
 

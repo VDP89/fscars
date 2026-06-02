@@ -28,12 +28,13 @@ import os
 import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 _LOCK_TIMEOUT_SEC = 30
 _LOCK_POLL_INTERVAL = 0.1
 _STALE_LOCK_AGE_SEC = 120
 
-MergeFn = Callable[[list[dict], list[dict]], list[dict]]
+MergeFn = Callable[[list[dict[str, Any]], list[dict[str, Any]]], list[dict[str, Any]]]
 
 
 def _acquire_lock(lock_path: Path) -> int:
@@ -67,10 +68,10 @@ def _release_lock(fd: int, lock_path: Path) -> None:
         lock_path.unlink()
 
 
-def _load_jsonl(path: Path) -> list[dict]:
+def _load_jsonl(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
-    rows: list[dict] = []
+    rows: list[dict[str, Any]] = []
     with path.open(encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
@@ -83,7 +84,7 @@ def _load_jsonl(path: Path) -> list[dict]:
     return rows
 
 
-def _atomic_write_jsonl(path: Path, rows: list[dict]) -> None:
+def _atomic_write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     with tmp.open("w", encoding="utf-8") as fh:
         for row in rows:
@@ -92,10 +93,10 @@ def _atomic_write_jsonl(path: Path, rows: list[dict]) -> None:
 
 
 def _default_merge(
-    disk_rows: list[dict],
-    mem_rows: list[dict],
+    disk_rows: list[dict[str, Any]],
+    mem_rows: list[dict[str, Any]],
     key_field: str = "event_id",
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Merge by ``key_field``: in-memory fields win, disk extras preserved."""
     disk_by_key = {r.get(key_field): r for r in disk_rows if r.get(key_field)}
     for mr in mem_rows:
@@ -111,7 +112,7 @@ def _default_merge(
 
 def safe_save_jsonl(
     path: Path,
-    mem_rows: list[dict],
+    mem_rows: list[dict[str, Any]],
     *,
     merge_fn: MergeFn | None = None,
     key_field: str = "event_id",

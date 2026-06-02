@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from fscars.io.safe_jsonl import safe_save_jsonl
 
@@ -22,7 +23,7 @@ def opps_path(root: Path | None = None) -> Path:
     return base / "logs" / "opportunities.jsonl"
 
 
-def log_opportunity(opp: dict, *, root: Path | None = None) -> bool:
+def log_opportunity(opp: dict[str, Any], *, root: Path | None = None) -> bool:
     """Append a single opportunity dict. Returns True on success.
 
     Like :func:`fscars.core.log.log_fire`, this is best-effort: a logging
@@ -38,12 +39,12 @@ def log_opportunity(opp: dict, *, root: Path | None = None) -> bool:
         return False
 
 
-def read_opps(*, root: Path | None = None) -> list[dict]:
+def read_opps(*, root: Path | None = None) -> list[dict[str, Any]]:
     """Read all opportunities from disk. Malformed lines are skipped."""
     path = opps_path(root)
     if not path.exists():
         return []
-    out: list[dict] = []
+    out: list[dict[str, Any]] = []
     with path.open(encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
@@ -56,7 +57,7 @@ def read_opps(*, root: Path | None = None) -> list[dict]:
     return out
 
 
-def save_opps(opps: list[dict], *, root: Path | None = None) -> int:
+def save_opps(opps: list[dict[str, Any]], *, root: Path | None = None) -> int:
     """Persist opportunities via :func:`safe_save_jsonl`. Returns rows written."""
     path = opps_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)

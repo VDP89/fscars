@@ -18,6 +18,7 @@ from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 DEFAULT_BRAND: dict[str, str] = {
     "primary": "#1e293b",
@@ -43,7 +44,7 @@ def _parse_ts(ts: str) -> datetime | None:
     return d
 
 
-def filter_period(rows: Iterable[dict], period: str) -> list[dict]:
+def filter_period(rows: Iterable[dict[str, Any]], period: str) -> list[dict[str, Any]]:
     """Return rows whose ``timestamp`` falls within the named window.
 
     ``period`` is one of ``"all"``, ``"7d"``, ``"30d"``, ``"90d"``. Anything
@@ -57,7 +58,7 @@ def filter_period(rows: Iterable[dict], period: str) -> list[dict]:
     if not days:
         return rows
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    out: list[dict] = []
+    out: list[dict[str, Any]] = []
     for r in rows:
         ts = _parse_ts(r.get("timestamp", ""))
         if ts is not None and ts >= cutoff:
@@ -102,8 +103,8 @@ class DashboardMetrics:
 
 
 def compute_metrics(
-    fires: list[dict],
-    opps: list[dict],
+    fires: list[dict[str, Any]],
+    opps: list[dict[str, Any]],
     *,
     period: str = "all",
     scar_id_field: str = "scar_id",

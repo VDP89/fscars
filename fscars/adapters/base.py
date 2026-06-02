@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any
 
 from fscars.core.payload import HookPayload
 from fscars.core.scar import ScarOutput
@@ -24,7 +25,7 @@ class Adapter(ABC):
     name: str = "abstract"
 
     @abstractmethod
-    def parse_stdin(self, raw: dict) -> HookPayload | None:
+    def parse_stdin(self, raw: dict[str, Any]) -> HookPayload | None:
         """Translate a platform-specific JSON payload into a HookPayload.
 
         Returns None if the payload is malformed. The engine treats None

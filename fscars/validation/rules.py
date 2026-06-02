@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 Verdict = Literal["auto_tp", "auto_fp", "ambiguous"]
 
@@ -30,7 +30,7 @@ Decision = tuple[Verdict, str]
 class Classifier(Protocol):
     """Callable that scores a single opportunity row."""
 
-    def __call__(self, opp: dict) -> Decision: ...
+    def __call__(self, opp: dict[str, Any]) -> Decision: ...
 
 
 @dataclass
@@ -48,7 +48,7 @@ class RulesEngine:
     def register(self, scar_id: str, classifier: Classifier) -> None:
         self.classifiers[scar_id] = classifier
 
-    def classify(self, opp: dict) -> Decision | None:
+    def classify(self, opp: dict[str, Any]) -> Decision | None:
         """Return ``(verdict, reason)`` or ``None`` if no classifier is registered."""
         scar = opp.get(self.scar_id_field)
         if scar is None:
@@ -60,7 +60,7 @@ class RulesEngine:
 
     def classify_all(
         self,
-        opps: list[dict],
+        opps: list[dict[str, Any]],
         *,
         skip_validated: bool = True,
     ) -> list[Decision | None]:
@@ -77,7 +77,7 @@ class RulesEngine:
 
 
 def apply_decisions(
-    opps: list[dict],
+    opps: list[dict[str, Any]],
     decisions: list[Decision | None],
     *,
     validated_by: str = "capa_4_auto",
@@ -118,7 +118,7 @@ def apply_decisions(
 
 
 def summarize(
-    opps: list[dict],
+    opps: list[dict[str, Any]],
     decisions: list[Decision | None],
     *,
     scar_id_field: str = "scar_id",
@@ -175,7 +175,7 @@ def line_count_classifier(
     under whichever ``scar_id`` they like.
     """
 
-    def _classify(opp: dict) -> Decision:
+    def _classify(opp: dict[str, Any]) -> Decision:
         notes = opp.get(notes_field, "")
         m = _LINE_COUNT_RE.search(notes)
         if not m:
