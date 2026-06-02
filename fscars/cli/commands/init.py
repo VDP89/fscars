@@ -49,7 +49,7 @@ def run(
         )
     else:
         typer.echo(f"[OK] fscars already initialized at {store.root}")
-    typer.echo(f"[OK] Wired hook entry into {project_root / wired}")
+    typer.echo(f"[OK] Wired hook entry into {wired}")
     typer.echo("")
     typer.echo("Next: copy a starter scar from `cookbook/scars/`, or run")
     typer.echo("      `fscar fire <name> \"<rule>\"` to register one inline.")
