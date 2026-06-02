@@ -133,3 +133,86 @@ def test_audit_live_writes_dashboard_and_handles_uuid_fires(tmp_path: Path):
     assert result.exit_code == 0, result.output
     assert (tmp_path / "SCARS_DASHBOARD.md").exists()
     assert (tmp_path / "SCARS_DASHBOARD.html").exists()
+
+
+def test_audit_with_classifiers_applies_capa4(tmp_path: Path):
+    """`fscar audit --classifiers MODULE:FUNC` runs Capa 4 over real opps,
+    not the no-op path, and still writes the dashboard end to end.
+    """
+    _seed_opps(tmp_path / ".fscars")
+
+    user_mod = tmp_path / "user_clf_audit.py"
+    user_mod.write_text(
+        textwrap.dedent(
+            """
+            from fscars.validation.rules import line_count_classifier
+
+            def register(engine):
+                engine.register("scar_x", line_count_classifier())
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    sys.path.insert(0, str(tmp_path))
+    try:
+        result = runner.invoke(
+            app,
+            [
+                "audit",
+                "--project",
+                str(tmp_path),
+                "--classifiers",
+                "user_clf_audit:register",
+            ],
+        )
+    finally:
+        sys.path.remove(str(tmp_path))
+        sys.modules.pop("user_clf_audit", None)
+
+    assert result.exit_code == 0, result.output
+    assert "Capa 4" in result.output
+    # The classifier actually ran over the seeded opps (not "0 opps classified").
+    assert "0 opps classified" not in result.output
+    assert (tmp_path / "SCARS_DASHBOARD.md").exists()
+    assert (tmp_path / "SCARS_DASHBOARD.html").exists()
+
+
+def test_dashboard_rejects_malformed_brand_json(tmp_path: Path):
+    _seed_opps(tmp_path / ".fscars")
+    bad = tmp_path / "brand.json"
+    bad.write_text("{not valid json", encoding="utf-8")
+    result = runner.invoke(
+        app,
+        [
+            "dashboard",
+            "--project",
+            str(tmp_path),
+            "--format",
+            "html",
+            "--brand",
+            str(bad),
+        ],
+    )
+    assert result.exit_code != 0
+    assert "JSON" in result.output
+
+
+def test_dashboard_rejects_non_object_brand(tmp_path: Path):
+    _seed_opps(tmp_path / ".fscars")
+    notobj = tmp_path / "brand.json"
+    notobj.write_text('["#ffffff", "#000000"]', encoding="utf-8")
+    result = runner.invoke(
+        app,
+        [
+            "dashboard",
+            "--project",
+            str(tmp_path),
+            "--format",
+            "html",
+            "--brand",
+            str(notobj),
+        ],
+    )
+    assert result.exit_code != 0
+    assert "object" in result.output.lower()

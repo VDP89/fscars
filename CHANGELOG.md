@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `fscar dashboard --brand` now fails with a clear error message instead of an unhandled exception when the palette file is unreadable, not UTF-8, not valid JSON, or not a JSON object (catches the three orthogonal file/JSON error branches plus a shape check).
+
+### Tests
+
+- Added an end-to-end `fscar audit --classifiers MODULE:FUNC` test (Capa 4 runs over real opportunities, not the no-op path) plus two `--brand` rejection tests for the new defensive validation.
+
 ### Planned
 
 - Demo GIF rendered with VHS (`assets/demo.tape` storyboard ready in planning doc).

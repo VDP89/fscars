@@ -68,7 +68,27 @@ def run(
 
     palette = None
     if brand is not None:
-        palette = json.loads(brand.read_text(encoding="utf-8"))
+        try:
+            raw = brand.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise typer.BadParameter(
+                f"--brand file could not be read: {exc}"
+            ) from exc
+        except UnicodeDecodeError as exc:
+            raise typer.BadParameter(
+                f"--brand file is not valid UTF-8: {exc}"
+            ) from exc
+        try:
+            palette = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise typer.BadParameter(
+                f"--brand file is not valid JSON: {exc}"
+            ) from exc
+        if not isinstance(palette, dict):
+            raise typer.BadParameter(
+                "--brand must be a JSON object of palette overrides "
+                f"(got {type(palette).__name__})."
+            )
 
     wrote: list[str] = []
     if fmt in ("md", "both"):
