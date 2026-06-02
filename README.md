@@ -205,6 +205,15 @@ The first derivative essay [*From Memory to Scar*](https://victordelpuerto.com/p
 
 ---
 
+## Related projects
+
+Part of a small cluster for operating LLM coding agents in production:
+
+- **[lucy-syndrome](https://github.com/VDP89/lucy-syndrome)** — the companion research: five persistence invariants and the framework fscars implements.
+- **[callus](https://github.com/VDP89/callus)** — per-author voice calibration: score and rewrite drafts against your own raw voice instead of a generic AI detector.
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). New adapters and cookbook scars are especially welcome. Contributors and acknowledgments — including the Codex-authored Codex adapter — live in [CONTRIBUTORS.md](CONTRIBUTORS.md).
