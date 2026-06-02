@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned
+
+- Demo GIF rendered with VHS (`assets/demo.tape` storyboard ready in planning doc).
+- Logo + brand assets.
+- Homebrew tap.
+- Codex native hook mode once upstream hook API stabilises.
+
+## [0.3.0] — 2026-06-02
+
+Codex instruction-mode adapter + cross-platform install coverage.
+
 ### Added
 
 - **Codex instruction-mode installer** — `fscar init --adapter codex` now writes an idempotent `AGENTS.md` block plus `.codex/fscars.json`, registers the `codex` run-hook adapter name, and documents the tested rollout plan in `docs/codex_integration_plan.md`. Native Codex pre-tool blocking remains a roadmap item until a stable hook API is available.
@@ -20,12 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `tests/cli/test_init_claude_code.py` so the default `claude_code` install path is exercised end-to-end through the CLI across the macOS / Linux / Windows matrix, matching the existing Codex coverage and guarding against the path-separator regression on every adapter.
 
-### Planned
+### Acknowledgments
 
-- Demo GIF rendered with VHS (`assets/demo.tape` storyboard ready in planning doc).
-- Logo + brand assets.
-- Homebrew tap.
-- Codex native hook mode once upstream hook API stabilises.
+- The Codex instruction-mode adapter (`fscars/adapters/codex/`, [#6](https://github.com/VDP89/fscars/pull/6)) was designed and implemented by **OpenAI Codex**, which mapped out and built its own integration path into fscars — the `AGENTS.md` install block, the `.codex/fscars.json` manifest, and the rollout plan in `docs/codex_integration_plan.md`. fscars is built and maintained at **[DG Ingeniería SRL](https://dgingenieriasrl.com)** by **[Victor Del Puerto](https://victordelpuerto.com)**. See [CONTRIBUTORS.md](CONTRIBUTORS.md).
 
 ## [0.2.0] — 2026-05-26
 

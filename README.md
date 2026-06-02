@@ -16,13 +16,16 @@
     <a href="https://claude.com/claude-code">
       <img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-Compatible-6366f1">
     </a>
+    <a href="docs/codex_integration_plan.md">
+      <img alt="Codex" src="https://img.shields.io/badge/Codex-instruction--mode-10a37f">
+    </a>
     <a href="https://doi.org/10.5281/zenodo.19555971">
       <img alt="Companion paper" src="https://img.shields.io/badge/Paper-Lucy%20Syndrome-orange">
     </a>
   </p>
 </div>
 
-> Status: **alpha**. `pip install fscars` is live on PyPI (v0.2.0). Core engine, Claude Code adapter, 5 starter scars, and the validation layers (`fscars.validation`) — a three-tier loop for turning observations into auditable outcomes — ship in that release; the Codex instruction-mode installer is merged on `main` and lands in the next release. Native Codex hook blocking remains on the roadmap. Read [CHANGELOG.md](CHANGELOG.md) for the current state.
+> Status: **alpha (v0.3.0)**. Install with `pip install fscars`. Core engine, Claude Code and Codex (instruction-mode) adapters, 5 starter scars, and the validation layers (`fscars.validation`) — a three-tier loop for turning observations into auditable outcomes — are working. Native Codex hook blocking remains on the roadmap. Read [CHANGELOG.md](CHANGELOG.md) for the current state.
 
 ---
 
@@ -55,8 +58,7 @@ This repository is the first installable implementation of those invariants.
 ## Quick start
 
 ```bash
-pip install fscars            # v0.2.0 on PyPI
-# the Codex adapter below is on main until the next release: pip install -e .
+pip install fscars            # v0.3.0 on PyPI
 cd your-project
 fscar init                    # creates .fscars/ + wires Claude Code
 fscar init --adapter codex    # creates .fscars/ + writes Codex AGENTS.md guidance
@@ -205,7 +207,7 @@ The first derivative essay [*From Memory to Scar*](https://victordelpuerto.com/p
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). New adapters and cookbook scars are especially welcome.
+See [CONTRIBUTING.md](CONTRIBUTING.md). New adapters and cookbook scars are especially welcome. Contributors and acknowledgments — including the Codex-authored Codex adapter — live in [CONTRIBUTORS.md](CONTRIBUTORS.md).
 
 ```bash
 git clone https://github.com/Vdp89/fscars
