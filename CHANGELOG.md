@@ -7,20 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned
+
+- Demo GIF rendered with VHS (`assets/demo.tape` storyboard ready in planning doc).
+- Logo + brand assets.
+- Homebrew tap.
+
+## [0.4.0] — 2026-06-03
+
+Codex **native hooks** adapter — deterministic blocking on the Codex hook surfaces, lifting the long-standing roadmap item now that OpenAI ships a stable Codex hook API.
+
+### Added
+
+- **Codex native-hooks installer** — `fscar init --adapter codex` now registers the single fscars entrypoint as a native `command` hook in `.codex/hooks.json` for every parity event (`SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`), with a `commandWindows` override for Windows. On the surfaces Codex supports, `PreToolUse` can deny a `Bash` / `apply_patch` / MCP call before it runs (`hookSpecificOutput.permissionDecision: "deny"`). The `AGENTS.md` block is kept as an operational fallback and audit contract; the manifest (`.codex/fscars.json`) now reports `"mode": "native-hooks"`.
+- **`fscar doctor --adapter codex`** — validates that `.codex/hooks.json` registers the fscars entrypoint for every parity event, that the manifest is in native-hooks mode, and that the `AGENTS.md` notes are present. `--adapter claude_code` remains the default.
+- `apply_patch` payloads are normalized to the `Edit` tool with the first touched file path extracted, so existing Write/Edit-scoped cookbook scars fire on Codex file edits.
+
+### Changed
+
+- `Adapter.emit_output(output)` → `Adapter.emit_output(output, payload=None)`. The Codex adapter uses the originating event to pick its response shape (`permissionDecision` on `PreToolUse`, `decision: "block"` + top-level `reason` as feedback elsewhere, `additionalContext` otherwise) and echoes `hookEventName`. The Claude Code adapter accepts the argument and is behavior-unchanged; `run_hook` passes the payload through.
+
 ### Fixed
 
 - `fscar dashboard --brand` now fails with a clear error message instead of an unhandled exception when the palette file is unreadable, not UTF-8, not valid JSON, or not a JSON object (catches the three orthogonal file/JSON error branches plus a shape check).
 
 ### Tests
 
-- Added an end-to-end `fscar audit --classifiers MODULE:FUNC` test (Capa 4 runs over real opportunities, not the no-op path) plus two `--brand` rejection tests for the new defensive validation.
+- Added an end-to-end `fscar audit --classifiers MODULE:FUNC` test (Capa 4 runs over real opportunities, not the no-op path) plus two `--brand` rejection tests for the defensive validation.
+- New Codex coverage: official `Bash` / `apply_patch` / MCP payload parsing, per-event emit (deny vs feedback vs context), native `hooks.json` registration + idempotency + foreign-hook preservation across install/uninstall, `doctor --adapter codex`, and a `run_hook --adapter codex` end-to-end over an `apply_patch` write.
 
-### Planned
+### Acknowledgments
 
-- Demo GIF rendered with VHS (`assets/demo.tape` storyboard ready in planning doc).
-- Logo + brand assets.
-- Homebrew tap.
-- Codex native hook mode once upstream hook API stabilises.
+- OpenAI for the [Codex hooks API](https://developers.openai.com/codex/hooks), which lifted this from a roadmap item to a shipped adapter.
+
+### Known limitations
+
+- Codex `PreToolUse` is a guardrail, not a complete boundary: it does not intercept every shell path yet, and WebSearch / other non-shell, non-MCP tools are not intercepted. Non-managed command hooks must be trusted once via `/hooks` in the Codex CLI before they run. fscars registers a catch-all hook (no `matcher`) per event and lets the engine filter per scar.
 
 ## [0.3.0] — 2026-06-02
 

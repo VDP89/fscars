@@ -33,12 +33,14 @@ def run(
     fresh = not store.exists()
     store.initialize()
 
+    trust_hint = ""
     if adapter == "claude_code":
         ClaudeCodeAdapter().install(project_root)
         wired = ".claude/settings.json"
     elif adapter == "codex":
         CodexAdapter().install(project_root)
-        wired = "AGENTS.md + .codex/fscars.json"
+        wired = ".codex/hooks.json + AGENTS.md (+ .codex/fscars.json)"
+        trust_hint = "Run `/hooks` in the Codex CLI once to review and trust the fscars hooks."
     else:
         raise typer.BadParameter(f"Unknown adapter: {adapter}")
 
@@ -50,6 +52,8 @@ def run(
     else:
         typer.echo(f"[OK] fscars already initialized at {store.root}")
     typer.echo(f"[OK] Wired hook entry into {wired}")
+    if trust_hint:
+        typer.secho(f"[!] {trust_hint}", fg=typer.colors.YELLOW)
     typer.echo("")
     typer.echo("Next: copy a starter scar from `cookbook/scars/`, or run")
     typer.echo("      `fscar fire <name> \"<rule>\"` to register one inline.")
