@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Tests
+
+- Added a deterministic test that `_force_utf8_io()` reconfigures both `sys.stdin` and `sys.stdout` from cp1252 to UTF-8, covering the input direction of the v0.4.1 fix (a payload with accented text in `tool_input` is read as UTF-8, not cp1252 mojibake) alongside the existing output-bytes test. Closes the coverage gap noted in the #8 review.
+
 ### Planned
 
 - Demo GIF rendered with VHS (`assets/demo.tape` storyboard ready in planning doc).

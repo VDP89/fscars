@@ -97,3 +97,22 @@ def test_run_hook_emits_utf8_even_when_stdout_defaults_to_cp1252(monkeypatch, tm
     out_bytes.decode("utf-8")  # must not raise
     assert b"\xe2\x80\x94" in out_bytes  # UTF-8 em-dash present
     assert b"\x97" not in out_bytes  # not the cp1252 single byte
+
+
+def test_force_utf8_io_reconfigures_stdin_and_stdout(monkeypatch):
+    """Regression (both directions): `_force_utf8_io` must switch stdin and
+    stdout to UTF-8 so the host<->hook contract stays UTF-8 regardless of the
+    platform default (cp1252 on a Windows console). This covers the input
+    direction — a payload with accented text in `tool_input` is read as UTF-8,
+    not misread as cp1252 mojibake — as well as the output direction."""
+    in_stream = io.TextIOWrapper(io.BytesIO(b"{}"), encoding="cp1252")
+    out_stream = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+    assert in_stream.encoding == "cp1252"
+    assert out_stream.encoding == "cp1252"
+
+    monkeypatch.setattr("sys.stdin", in_stream)
+    monkeypatch.setattr("sys.stdout", out_stream)
+    run_hook._force_utf8_io()
+
+    assert in_stream.encoding.replace("-", "").lower() == "utf8"
+    assert out_stream.encoding.replace("-", "").lower() == "utf8"
