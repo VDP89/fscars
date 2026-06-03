@@ -25,7 +25,7 @@ Codex **native hooks** adapter — deterministic blocking on the Codex hook surf
 
 ### Changed
 
-- `Adapter.emit_output(output)` → `Adapter.emit_output(output, payload=None)`. The Codex adapter uses the originating event to pick its response shape (`permissionDecision` on `PreToolUse`, `decision: "block"` as feedback elsewhere, `additionalContext` otherwise) and echoes `hookEventName`. The Claude Code adapter accepts the argument and is behavior-unchanged; `run_hook` passes the payload through.
+- `Adapter.emit_output(output)` → `Adapter.emit_output(output, payload=None)`. The Codex adapter uses the originating event to pick its response shape (`permissionDecision` on `PreToolUse`, `decision: "block"` + top-level `reason` as feedback elsewhere, `additionalContext` otherwise) and echoes `hookEventName`. The Claude Code adapter accepts the argument and is behavior-unchanged; `run_hook` passes the payload through.
 
 ### Fixed
 

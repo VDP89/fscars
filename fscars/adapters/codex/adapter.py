@@ -169,7 +169,16 @@ class CodexAdapter(Adapter):
                     or "fscars: blocked by a functional scar."
                 )
             else:
+                # The tool already ran (or there is no tool). Surface as
+                # feedback: `decision: "block"` + top-level `reason` per the
+                # official examples, mirrored into additionalContext.
+                reason = (
+                    output.additional_context
+                    or output.system_message
+                    or "fscars: blocked by a functional scar."
+                )
                 result["decision"] = "block"
+                result["reason"] = reason
                 if output.additional_context:
                     hook_specific["additionalContext"] = output.additional_context
         elif output.additional_context:

@@ -146,6 +146,7 @@ def test_emit_post_tool_use_block_is_feedback():
     )
     parsed = json.loads(out)
     assert parsed["decision"] == "block"
+    assert parsed["reason"] == "too late but note this"
     assert parsed["hookSpecificOutput"]["hookEventName"] == "PostToolUse"
     assert parsed["hookSpecificOutput"]["additionalContext"] == "too late but note this"
 
