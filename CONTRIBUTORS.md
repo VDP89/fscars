@@ -8,11 +8,14 @@ Functional Scars is built and maintained by:
 
 ## Acknowledgments
 
-- **OpenAI Codex** designed and implemented the Codex instruction-mode adapter
-  ([`fscars/adapters/codex/`](fscars/adapters/codex/), [#6](https://github.com/VDP89/fscars/pull/6)).
-  It mapped out and built its own path into fscars: the idempotent `AGENTS.md`
-  install block, the `.codex/fscars.json` manifest, and the rollout plan in
-  [`docs/codex_integration_plan.md`](docs/codex_integration_plan.md).
+- **OpenAI Codex** designed and implemented the original Codex instruction-mode
+  adapter ([`fscars/adapters/codex/`](fscars/adapters/codex/),
+  [#6](https://github.com/VDP89/fscars/pull/6)). It mapped out and built its own
+  path into fscars: the idempotent `AGENTS.md` install block, the
+  `.codex/fscars.json` manifest, and the integration plan in
+  [`docs/codex_integration_plan.md`](docs/codex_integration_plan.md). Codex also
+  ran the out-of-band review that approved the v0.4.0 native-hooks promotion
+  ([#7](https://github.com/VDP89/fscars/pull/7)).
 - The framework is grounded in the companion paper
   [*Lucy Syndrome in LLM Agents*](https://doi.org/10.5281/zenodo.19555971).
 

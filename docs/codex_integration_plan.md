@@ -61,17 +61,16 @@ The generated block tells Codex to:
   when a task touches scar-sensitive files;
 - propose or add new cookbook scars when a repeated binary correction appears;
 - either fix a scar warning or explicitly explain why it is a false positive;
-- keep the native hook command reserved for future hook support.
+- point at the native hook entrypoint registered in `.codex/hooks.json` as the
+  primary enforcement surface.
 
-This makes Codex treat scars as an operational contract, not a vague memory.
+This makes Codex treat scars as an operational contract, not a vague memory, and
+keeps a usable fallback for surfaces the native hook layer does not cover.
 
-## GitHub rollout checklist
+## Release process (followed for v0.4.0)
 
-1. Commit the adapter, tests, README, changelog, and this plan.
-2. Open a PR with a title that makes the support level explicit, for example:
-   `Add Codex instruction-mode installer`.
-3. In the PR body, state that native hook blocking is **not** claimed yet.
-4. Run:
+1. Implement the adapter, tests, README, changelog, and this plan on a branch.
+2. Gate locally and in CI (macOS / Linux / Windows × Py 3.10–3.12):
 
    ```bash
    pytest -q
@@ -79,12 +78,10 @@ This makes Codex treat scars as an operational contract, not a vague memory.
    mypy fscars
    ```
 
-5. After merge, update release notes with:
-   - new `fscar init --adapter codex` command;
-   - generated `AGENTS.md` contract;
-   - `.codex/fscars.json` manifest;
-   - limitation: instruction/audit mode until Codex exposes a stable hook API;
-   - type-check status: `mypy fscars` passes under strict mode.
+3. Open a PR with a title that states the support level (`feat(codex): native
+   hooks adapter`), and have it reviewed out-of-band (Codex reviewed #7).
+4. Squash-merge, tag `v*.*.*`, and let `release.yml` publish to PyPI via the
+   OIDC trusted publisher behind the `pypi` environment's required-reviewer gate.
 
 ## Native hook milestone — shipped in v0.4.0
 
