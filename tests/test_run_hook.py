@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import sys
 
 from fscars import run_hook
 
@@ -66,3 +67,33 @@ def test_run_hook_codex_apply_patch_emits_native_shape(monkeypatch, tmp_path, ca
     assert code == 0
     assert parsed["hookSpecificOutput"]["hookEventName"] == "PreToolUse"
     assert "large-write-review" in parsed["hookSpecificOutput"]["additionalContext"]
+
+
+def test_run_hook_emits_utf8_even_when_stdout_defaults_to_cp1252(monkeypatch, tmp_path):
+    """Regression: a scar message with a non-ASCII char (the em-dash in
+    large-write-review) must be written as valid UTF-8 even when stdout
+    defaults to cp1252, as it does on a Windows console. Without forcing
+    UTF-8, the em-dash is written as byte 0x97 and the host agent (Codex /
+    Claude Code) cannot decode the hook output."""
+    raw = io.BytesIO()
+    monkeypatch.setattr("sys.stdout", io.TextIOWrapper(raw, encoding="cp1252", newline=""))
+
+    body = "\n".join(f"+line_{i}" for i in range(220))
+    patch = f"*** Begin Patch\n*** Update File: demo/big.py\n@@\n{body}\n*** End Patch\n"
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "apply_patch",
+        "tool_input": {"command": patch},
+        "cwd": str(tmp_path),
+        "session_id": "t",
+    }
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
+    monkeypatch.chdir(tmp_path)
+
+    run_hook.main(["--adapter", "codex"])
+    sys.stdout.flush()
+    out_bytes = raw.getvalue()
+
+    out_bytes.decode("utf-8")  # must not raise
+    assert b"\xe2\x80\x94" in out_bytes  # UTF-8 em-dash present
+    assert b"\x97" not in out_bytes  # not the cp1252 single byte
