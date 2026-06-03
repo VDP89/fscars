@@ -17,7 +17,7 @@
       <img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-Compatible-6366f1">
     </a>
     <a href="docs/codex_integration_plan.md">
-      <img alt="Codex" src="https://img.shields.io/badge/Codex-instruction--mode-10a37f">
+      <img alt="Codex" src="https://img.shields.io/badge/Codex-native%20hooks-10a37f">
     </a>
     <a href="https://doi.org/10.5281/zenodo.19555971">
       <img alt="Companion paper" src="https://img.shields.io/badge/Paper-Lucy%20Syndrome-orange">
@@ -25,7 +25,7 @@
   </p>
 </div>
 
-> Status: **alpha (v0.3.0)**. Install with `pip install fscars`. Core engine, Claude Code and Codex (instruction-mode) adapters, 5 starter scars, and the validation layers (`fscars.validation`) — a three-tier loop for turning observations into auditable outcomes — are working. Native Codex hook blocking remains on the roadmap. Read [CHANGELOG.md](CHANGELOG.md) for the current state.
+> Status: **alpha (v0.4.0)**. Install with `pip install fscars`. Core engine, Claude Code and Codex (native hooks) adapters, 5 starter scars, and the validation layers (`fscars.validation`) — a three-tier loop for turning observations into auditable outcomes — are working. Codex `PreToolUse` blocking is deterministic on the surfaces Codex supports (`Bash` / `apply_patch` / MCP); it remains a guardrail, not a complete boundary. Read [CHANGELOG.md](CHANGELOG.md) for the current state.
 
 ---
 
@@ -58,10 +58,10 @@ This repository is the first installable implementation of those invariants.
 ## Quick start
 
 ```bash
-pip install fscars            # v0.3.0 on PyPI
+pip install fscars            # v0.4.0 on PyPI
 cd your-project
 fscar init                    # creates .fscars/ + wires Claude Code
-fscar init --adapter codex    # creates .fscars/ + writes Codex AGENTS.md guidance
+fscar init --adapter codex    # creates .fscars/ + registers native Codex hooks (.codex/hooks.json)
 fscar list                    # 5 starter scars come pre-installed
 ```
 
@@ -97,7 +97,7 @@ Once installed, every Claude Code tool call passes through the engine. When a sc
 | `fscar audit` | Validate + cross-link fires↔opportunities + render dashboard |
 | `fscar --version` | Print the installed version |
 
-The hook entrypoint is `python -m fscars.run_hook`. Single command across every event type — no per-scar hook scripts. For Codex today, `fscar init --adapter codex` installs instruction-mode support in `AGENTS.md` plus `.codex/fscars.json`; native pre-tool blocking is reserved until Codex exposes a stable hook API.
+The hook entrypoint is `python -m fscars.run_hook`. Single command across every event type — no per-scar hook scripts. For Codex, `fscar init --adapter codex` registers that entrypoint as a native `command` hook in `.codex/hooks.json` for every parity event and keeps an `AGENTS.md` block as an operational fallback. Run `/hooks` in the Codex CLI once to trust the hooks. `PreToolUse` can deny `Bash` / `apply_patch` / MCP calls; it remains a guardrail, not a complete boundary (WebSearch and other non-shell/non-MCP tools are not intercepted).
 
 ---
 
@@ -112,7 +112,7 @@ The hook entrypoint is `python -m fscars.run_hook`. Single command across every 
         ┌──────────────┴──────────────┐
         │  fscars.adapters/           │
         │   claude_code (v0.1)        │
-        │   codex (instruction mode)  │
+        │   codex (native hooks)      │
         │   cursor (community)        │
         └──────────────┬──────────────┘
                        │
@@ -120,8 +120,8 @@ The hook entrypoint is `python -m fscars.run_hook`. Single command across every 
        .claude/settings.json wired with one entrypoint:
               python -m fscars.run_hook
 
-       Codex projects get AGENTS.md + .codex/fscars.json
-       until native hook registration is stable upstream
+       Codex projects register the same entrypoint natively in
+       .codex/hooks.json (+ AGENTS.md fallback / audit contract)
 ```
 
 The engine reads stdin, parses through the right adapter, dispatches to every matching scar, and emits the combined `additionalContext` plus exit code. A failure inside any scar is swallowed — the host harness must never crash because of fscars.
@@ -184,11 +184,10 @@ These are the four cases the paper explicitly excludes. Adding a scar there crea
 Currently supported:
 
 - **Claude Code** (Anthropic) — full adapter, all event types
-- **Codex CLI** (OpenAI) — instruction-mode installer via `AGENTS.md` + `.codex/fscars.json`; see [docs/codex_integration_plan.md](docs/codex_integration_plan.md)
+- **Codex CLI** (OpenAI) — native hooks via `.codex/hooks.json` (deterministic `PreToolUse` deny on `Bash` / `apply_patch` / MCP), with an `AGENTS.md` fallback / audit contract; see [docs/codex_integration_plan.md](docs/codex_integration_plan.md)
 
 On the roadmap:
 
-- **Codex native hooks** — deterministic pre-tool blocking once Codex hook stability is available upstream
 - **Cursor**, **Aider**, **Continue.dev** — community adapters welcome
 
 The core engine is platform-agnostic. Each adapter is a small glue layer (~300 LoC) that translates between platform-specific JSON shapes and the canonical `HookPayload`.

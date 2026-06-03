@@ -67,7 +67,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     result = engine.run(payload)
-    sys.stdout.write(adapter.emit_output(result.output))
+    sys.stdout.write(adapter.emit_output(result.output, payload))
     return result.exit_code
 
 

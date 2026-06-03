@@ -1,15 +1,25 @@
 """Codex adapter — OpenAI's Codex coding agent.
 
-Codex does not currently expose the same stable tool-hook contract used by
-Claude Code, so the production installer works in instruction mode: it writes
-an idempotent ``AGENTS.md`` block plus a machine-readable manifest under
-``.codex/fscars.json``. The parse/emit methods still support a normalized JSON
-shape so future hook support can be enabled without changing the core engine.
+Codex now exposes a native hook contract (``~/.codex/hooks.json`` or a repo
+``.codex/hooks.json``) with the same matcher-group shape Claude Code uses.
+``install`` registers a single fscars entrypoint as a native ``command`` hook
+for every parity event, so scars can block deterministically on the surfaces
+Codex supports (``PreToolUse`` over ``Bash``/``apply_patch``/MCP can deny a
+call before it runs). The ``AGENTS.md`` block is kept as an operational
+fallback and audit-loop contract, not the primary mechanism.
+
+Reference: https://developers.openai.com/codex/hooks
+
+Limitations carried from upstream: Codex ``PreToolUse`` is a guardrail, not a
+complete boundary — it does not intercept every shell path yet, and WebSearch
+and other non-shell/non-MCP tools are not intercepted. Non-managed command
+hooks must be trusted once via ``/hooks`` in the Codex CLI before they run.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from contextlib import suppress
 from datetime import datetime, timezone
 from pathlib import Path
@@ -37,28 +47,54 @@ _CODEX_TO_CANONICAL = {
     "notification": HookEventType.NOTIFICATION,
 }
 
+# Codex edits files through `apply_patch`. The cookbook scars target the
+# Write/Edit tool names, so we present apply_patch as "Edit" while keeping the
+# original Codex tool name in `raw`.
+_APPLY_PATCH_NAMES = {"apply_patch", "applyPatch"}
+
+# `*** Add File: path`, `*** Update File: path`, `*** Delete File: path`
+_PATCH_PATH_RE = re.compile(
+    r"^\*\*\*\s+(?:Add|Update|Delete)\s+File:\s+(.+?)\s*$",
+    re.MULTILINE,
+)
+
 
 class CodexAdapter(Adapter):
-    """Adapter for OpenAI Codex.
+    """Adapter for OpenAI Codex with native hook support.
 
-    The adapter intentionally separates two capabilities:
-
-    * ``install``/``uninstall`` are stable today and manage Codex project
-      instructions via ``AGENTS.md``.
-    * ``parse_stdin``/``emit_output`` are the hook-facing contract used by
-      tests and future Codex hook wrappers.
+    * ``install``/``uninstall`` register a native ``command`` hook in
+      ``.codex/hooks.json`` and keep an ``AGENTS.md`` operating block as a
+      fallback/audit contract.
+    * ``parse_stdin``/``emit_output`` implement the Codex hook payload and the
+      Codex response schema (``permissionDecision``/``additionalContext``).
     """
 
     name = "codex"
 
     AGENTS_FILE = "AGENTS.md"
     MANIFEST_FILE = ".codex/fscars.json"
+    HOOKS_FILE = ".codex/hooks.json"
     HOOK_COMMAND = "python -m fscars.run_hook --adapter codex"
+    HOOK_COMMAND_WINDOWS = "py -3 -m fscars.run_hook --adapter codex"
+    STATUS_MESSAGE = "fscars functional-scar check"
     BLOCK_START = "<!-- fscars:codex:start -->"
     BLOCK_END = "<!-- fscars:codex:end -->"
 
+    # Same five surfaces the Claude Code adapter wires.
+    WANTED_EVENTS: tuple[str, ...] = (
+        "SessionStart",
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PostToolUse",
+        "Stop",
+    )
+
+    # ------------------------------------------------------------------
+    # Hook-facing contract
+    # ------------------------------------------------------------------
+
     def parse_stdin(self, raw: dict[str, Any]) -> HookPayload | None:
-        """Convert a Codex/wrapper JSON payload to a normalized HookPayload."""
+        """Convert a Codex hook JSON payload to a normalized HookPayload."""
         if not isinstance(raw, dict):
             return None
         event_name = (
@@ -72,11 +108,22 @@ class CodexAdapter(Adapter):
         if canonical is None:
             return None
 
+        tool_name = raw.get("tool_name") or raw.get("toolName")
+        tool_input = dict(raw.get("tool_input") or raw.get("toolInput") or {})
+
+        # Normalize apply_patch into the Write/Edit world the scars expect, and
+        # surface a concrete file_path so path-scoped scars can match.
+        if tool_name in _APPLY_PATCH_NAMES:
+            patched = self._first_patched_path(tool_input)
+            if patched and not tool_input.get("file_path"):
+                tool_input["file_path"] = patched
+            tool_name = "Edit"
+
         try:
             return HookPayload(
                 event_type=canonical,
-                tool_name=raw.get("tool_name") or raw.get("toolName"),
-                tool_input=raw.get("tool_input") or raw.get("toolInput") or {},
+                tool_name=tool_name,
+                tool_input=tool_input,
                 prompt=raw.get("prompt"),
                 cwd=raw.get("cwd") or raw.get("workspace") or "",
                 session_id=raw.get("session_id") or raw.get("sessionId") or "",
@@ -85,49 +132,96 @@ class CodexAdapter(Adapter):
         except Exception:
             return None
 
-    def emit_output(self, output: ScarOutput) -> str:
-        """Serialize ScarOutput as generic JSON for Codex wrappers.
+    @staticmethod
+    def _first_patched_path(tool_input: dict[str, Any]) -> str:
+        """Pull the first file path out of an apply_patch payload."""
+        patch = tool_input.get("command") or tool_input.get("patch") or tool_input.get("input")
+        if not patch:
+            return ""
+        match = _PATCH_PATH_RE.search(str(patch))
+        return match.group(1).strip() if match else ""
 
-        Instruction-mode installs do not consume this directly, but keeping a
-        small JSON contract makes the adapter ready for a future native hook.
+    def emit_output(self, output: ScarOutput, payload: HookPayload | None = None) -> str:
+        """Serialize ScarOutput in Codex's native hook response schema.
+
+        * ``PreToolUse`` block → ``permissionDecision: "deny"`` (the call is
+          denied before it runs).
+        * Any other event block → ``decision: "block"`` as feedback only; the
+          tool already ran (or there is no tool), and ``run_hook`` still exits
+          with code 2 to signal the block upstream.
+        * Non-blocking context is injected via ``additionalContext``.
         """
         if output.is_empty:
             return "{}"
-        payload: dict[str, str | bool] = {}
-        if output.additional_context:
-            payload["additional_context"] = output.additional_context
-        if output.system_message:
-            payload["system_message"] = output.system_message
+
+        event_name = payload.event_type.value if payload is not None else "PreToolUse"
+        is_pre_tool = payload is None or payload.event_type == HookEventType.PRE_TOOL_USE
+
+        hook_specific: dict[str, Any] = {"hookEventName": event_name}
+        result: dict[str, Any] = {}
+
         if output.block:
-            payload["decision"] = "block"
-            payload["block"] = True
-        return json.dumps(payload, ensure_ascii=False)
+            if is_pre_tool:
+                hook_specific["permissionDecision"] = "deny"
+                hook_specific["permissionDecisionReason"] = (
+                    output.additional_context
+                    or output.system_message
+                    or "fscars: blocked by a functional scar."
+                )
+            else:
+                result["decision"] = "block"
+                if output.additional_context:
+                    hook_specific["additionalContext"] = output.additional_context
+        elif output.additional_context:
+            hook_specific["additionalContext"] = output.additional_context
+
+        result["hookSpecificOutput"] = hook_specific
+        if output.system_message:
+            result["systemMessage"] = output.system_message
+        return json.dumps(result, ensure_ascii=False)
+
+    # ------------------------------------------------------------------
+    # install / uninstall
+    # ------------------------------------------------------------------
 
     def install(self, project_root: Path) -> None:
-        """Install fscars guidance for Codex in AGENTS.md.
+        """Register native Codex hooks and keep the AGENTS.md fallback block.
 
-        The block is idempotent and scoped to the project root. It tells Codex
-        how to use fscars as a preflight/audit tool until Codex exposes a stable
-        native hook surface.
+        Idempotent: re-running install does not duplicate hooks or the block,
+        and it preserves any non-fscars hooks already in ``.codex/hooks.json``.
         """
         project_root.mkdir(parents=True, exist_ok=True)
+
+        # 1. AGENTS.md operating notes (fallback / audit contract).
         agents_path = project_root / self.AGENTS_FILE
-        manifest_path = project_root / self.MANIFEST_FILE
-
         current = agents_path.read_text(encoding="utf-8") if agents_path.exists() else ""
-        block = self._agents_block()
-        updated = self._replace_or_append_block(current, block)
-        agents_path.write_text(updated, encoding="utf-8")
+        agents_path.write_text(
+            self._replace_or_append_block(current, self._agents_block()),
+            encoding="utf-8",
+        )
 
-        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        # 2. Native hooks.json registration.
+        hooks_path = project_root / self.HOOKS_FILE
+        hooks_path.parent.mkdir(parents=True, exist_ok=True)
+        config = self._load_hooks_config(hooks_path)
+        self._merge_fscars_hooks(config)
+        hooks_path.write_text(
+            json.dumps(config, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
+        # 3. Machine-readable manifest.
+        manifest_path = project_root / self.MANIFEST_FILE
         manifest = {
-            "schema_version": 1,
+            "schema_version": 2,
             "adapter": self.name,
-            "mode": "instructions",
+            "mode": "native-hooks",
             "installed_at": datetime.now(timezone.utc).isoformat(),
             "agents_file": self.AGENTS_FILE,
+            "hooks_file": self.HOOKS_FILE,
             "hook_command": self.HOOK_COMMAND,
-            "native_hook_status": "pending_codex_stable_hook_api",
+            "events": list(self.WANTED_EVENTS),
+            "native_hook_status": "installed_pending_codex_trust_review",
         }
         manifest_path.write_text(
             json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
@@ -135,7 +229,11 @@ class CodexAdapter(Adapter):
         )
 
     def uninstall(self, project_root: Path) -> None:
-        """Remove the AGENTS.md fscars block and Codex manifest."""
+        """Remove fscars hooks, the AGENTS.md block, and the manifest.
+
+        Other hooks in ``.codex/hooks.json`` are left untouched.
+        """
+        # AGENTS.md block.
         agents_path = project_root / self.AGENTS_FILE
         if agents_path.exists():
             current = agents_path.read_text(encoding="utf-8")
@@ -145,12 +243,116 @@ class CodexAdapter(Adapter):
             else:
                 agents_path.unlink()
 
+        # hooks.json — strip only fscars handlers.
+        hooks_path = project_root / self.HOOKS_FILE
+        if hooks_path.exists():
+            config = self._load_hooks_config(hooks_path)
+            if self._strip_fscars_hooks(config):
+                hooks_path.unlink()
+            else:
+                hooks_path.write_text(
+                    json.dumps(config, indent=2, ensure_ascii=False) + "\n",
+                    encoding="utf-8",
+                )
+
+        # Manifest.
         manifest_path = project_root / self.MANIFEST_FILE
         if manifest_path.exists():
             manifest_path.unlink()
-            codex_dir = manifest_path.parent
+
+        # Drop .codex/ only if we emptied it.
+        codex_dir = project_root / ".codex"
+        if codex_dir.is_dir():
             with suppress(OSError):
                 codex_dir.rmdir()
+
+    # ------------------------------------------------------------------
+    # hooks.json helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _load_hooks_config(path: Path) -> dict[str, Any]:
+        """Read hooks.json defensively; an unreadable/invalid file → empty."""
+        if not path.exists():
+            return {}
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def _handler(self) -> dict[str, Any]:
+        return {
+            "type": "command",
+            "command": self.HOOK_COMMAND,
+            "commandWindows": self.HOOK_COMMAND_WINDOWS,
+            "statusMessage": self.STATUS_MESSAGE,
+        }
+
+    @staticmethod
+    def _is_fscars_handler(handler: Any) -> bool:
+        return isinstance(handler, dict) and "fscars.run_hook" in str(handler.get("command", ""))
+
+    def _group_has_fscars(self, group: Any) -> bool:
+        if not isinstance(group, dict):
+            return False
+        handlers = group.get("hooks")
+        if not isinstance(handlers, list):
+            return False
+        return any(self._is_fscars_handler(h) for h in handlers)
+
+    def _merge_fscars_hooks(self, config: dict[str, Any]) -> None:
+        """Add the fscars handler to each parity event, idempotently."""
+        hooks = config.get("hooks")
+        if not isinstance(hooks, dict):
+            hooks = {}
+            config["hooks"] = hooks
+
+        for event in self.WANTED_EVENTS:
+            groups = hooks.get(event)
+            if not isinstance(groups, list):
+                groups = []
+            if not any(self._group_has_fscars(g) for g in groups):
+                groups.append({"hooks": [self._handler()]})
+            hooks[event] = groups
+
+    def _strip_fscars_hooks(self, config: dict[str, Any]) -> bool:
+        """Remove fscars handlers from config in place.
+
+        Returns True if the whole config is now empty (caller deletes the file).
+        """
+        hooks = config.get("hooks")
+        if isinstance(hooks, dict):
+            for event, groups in list(hooks.items()):
+                if not isinstance(groups, list):
+                    continue
+                kept_groups: list[Any] = []
+                for group in groups:
+                    if not isinstance(group, dict):
+                        kept_groups.append(group)
+                        continue
+                    handlers = group.get("hooks")
+                    if not isinstance(handlers, list):
+                        kept_groups.append(group)
+                        continue
+                    kept = [h for h in handlers if not self._is_fscars_handler(h)]
+                    if kept:
+                        group["hooks"] = kept
+                        kept_groups.append(group)
+                    # else: the group held only fscars handlers → drop it.
+                if kept_groups:
+                    hooks[event] = kept_groups
+                else:
+                    hooks.pop(event)
+            if hooks:
+                config["hooks"] = hooks
+            else:
+                config.pop("hooks", None)
+        return not config
+
+    # ------------------------------------------------------------------
+    # AGENTS.md block (fallback / audit-loop contract)
+    # ------------------------------------------------------------------
 
     @classmethod
     def _agents_block(cls) -> str:
@@ -159,9 +361,12 @@ class CodexAdapter(Adapter):
                 cls.BLOCK_START,
                 "## Functional Scars for Codex",
                 "",
-                "This repository uses `fscars` to make repeated corrections persistent.",
-                "Until Codex exposes a stable native hook API, treat this block as the",
-                "Codex integration contract for every task in this repo.",
+                "This repository uses `fscars` with **native Codex hooks** "
+                "(see `.codex/hooks.json`).",
+                "Run `/hooks` in the Codex CLI once to review and trust them; "
+                "Codex does not run non-managed hooks until you approve them.",
+                "",
+                "These notes are the operational fallback and audit contract:",
                 "",
                 "- Before final delivery, run `fscar audit --period 30d` when `.fscars/` exists.",
                 "- If a task edits scar-sensitive files, inspect `.fscars/logs/fires.jsonl` and",
@@ -170,7 +375,7 @@ class CodexAdapter(Adapter):
                 "  `cookbook/scars/` and cover it with tests.",
                 "- Do not ignore a scar warning silently: either fix the issue or mention why the",
                 "  warning is a false positive in the final response.",
-                "- Native hook command reserved for future Codex hook support:",
+                "- Native hook entrypoint registered in `.codex/hooks.json`:",
                 f"  `{cls.HOOK_COMMAND}`.",
                 cls.BLOCK_END,
                 "",

@@ -34,8 +34,15 @@ class Adapter(ABC):
         ...
 
     @abstractmethod
-    def emit_output(self, output: ScarOutput) -> str:
-        """Serialize ScarOutput in the format the platform expects on stdout."""
+    def emit_output(self, output: ScarOutput, payload: HookPayload | None = None) -> str:
+        """Serialize ScarOutput in the format the platform expects on stdout.
+
+        ``payload`` is the event being responded to. Some platforms (Codex)
+        must echo the originating ``hookEventName`` and pick a per-event
+        response shape, so the originating payload is passed through. Adapters
+        that do not need it (Claude Code) may ignore it; it is optional so
+        existing call sites and tests keep working.
+        """
         ...
 
     @abstractmethod

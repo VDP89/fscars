@@ -63,26 +63,28 @@ class ClaudeCodeAdapter(Adapter):
         except Exception:
             return None
 
-    def emit_output(self, output: ScarOutput) -> str:
+    def emit_output(self, output: ScarOutput, payload: HookPayload | None = None) -> str:
         """Build the JSON string Claude Code expects on stdout.
 
         On block, the run_hook script also exits with code 2 — the
-        decision="block" field is for surface visibility.
+        decision="block" field is for surface visibility. ``payload`` is
+        accepted for interface parity with other adapters but unused here:
+        Claude Code does not require the originating event name in the output.
         """
         if output.is_empty:
             return "{}"
 
-        payload: dict[str, Any] = {}
+        result: dict[str, Any] = {}
         hook_specific: dict[str, Any] = {}
         if output.additional_context:
             hook_specific["additionalContext"] = output.additional_context
         if output.block:
             hook_specific["decision"] = "block"
         if hook_specific:
-            payload["hookSpecificOutput"] = hook_specific
+            result["hookSpecificOutput"] = hook_specific
         if output.system_message:
-            payload["systemMessage"] = output.system_message
-        return json.dumps(payload, ensure_ascii=False)
+            result["systemMessage"] = output.system_message
+        return json.dumps(result, ensure_ascii=False)
 
     # -----------------------------------------------------------------
     # install / uninstall — wire up `.claude/settings.json`
