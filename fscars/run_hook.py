@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from contextlib import suppress
 from typing import Any, cast
 
 from fscars.adapters.base import Adapter
@@ -25,6 +26,24 @@ _ADAPTERS: dict[str, type[Adapter]] = {
     "claude_code": ClaudeCodeAdapter,
     "codex": CodexAdapter,
 }
+
+
+def _force_utf8_io() -> None:
+    """Force stdin/stdout to UTF-8 regardless of platform.
+
+    On Windows the default console encoding is cp1252, so a scar message with
+    a non-ASCII character (e.g. the em-dash in the ``large-write-review``
+    starter scar) would be written as bytes the host agent cannot decode —
+    byte ``0x97`` instead of the UTF-8 sequence ``e2 80 94``. Codex and Claude
+    Code both read hook stdout as UTF-8, so without this the hook output is
+    corrupted on Windows. Likewise an incoming payload with accented text in
+    ``tool_input`` must be read as UTF-8, not cp1252.
+    """
+    for stream in (sys.stdin, sys.stdout):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            with suppress(ValueError, OSError):  # exotic/non-reconfigurable streams
+                reconfigure(encoding="utf-8")
 
 
 def _read_stdin() -> dict[str, Any] | None:
@@ -52,6 +71,8 @@ def main(argv: list[str] | None = None) -> int:
         help="Which AI coding agent's hook payload to expect on stdin.",
     )
     args = parser.parse_args(argv)
+
+    _force_utf8_io()
 
     raw = _read_stdin()
     if raw is None:

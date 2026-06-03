@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Windows: hook stdout/stdin are now forced to UTF-8.** On a Windows console the default encoding is cp1252, so `run_hook` wrote a scar message containing a non-ASCII character (the em-dash in the `large-write-review` starter scar) as byte `0x97` instead of the UTF-8 sequence `e2 80 94`, producing output Codex and Claude Code cannot decode. `run_hook.main()` now reconfigures `sys.stdin`/`sys.stdout` to UTF-8 before reading the payload or writing the response. Found while verifying the v0.4.0 Codex adapter against a live Codex CLI on Windows; covered by a raw-bytes regression test (the prior tests captured strings and missed the encoding).
+
 ### Planned
 
 - Demo GIF rendered with VHS (`assets/demo.tape` storyboard ready in planning doc).
