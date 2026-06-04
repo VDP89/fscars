@@ -103,6 +103,38 @@ def test_load_from_dir_loads_module_with_dataclass(tmp_path: Path):
     assert [s.scar_id for s in registry.all()] == ["dc-scar"]
 
 
+def test_load_from_dir_skips_base_class_with_empty_scar_id(tmp_path: Path):
+    """A template/base scar class with an empty ``scar_id`` (e.g. the cookbook's
+    ``ImportAwareWriteScar``) must NOT register — otherwise `fscar init --all`
+    surfaces a blank, id-less row in `fscar list` (PR #11 review, P2)."""
+    scars_dir = tmp_path / "scars"
+    scars_dir.mkdir(parents=True, exist_ok=True)
+    (scars_dir / "import_like.py").write_text(
+        "from fscars.core.fire import Severity\n"
+        "from fscars.core.payload import HookEventType\n"
+        "from fscars.core.scar import FunctionalScar, ScarOutput\n"
+        "\n"
+        "class BaseTemplate(FunctionalScar):\n"
+        "    severity = Severity.WARN\n"
+        "    event_type = HookEventType.USER_PROMPT_SUBMIT\n"
+        "    def matches(self, payload): return False\n"
+        "    def build_output(self, payload): return ScarOutput()\n"
+        "\n"
+        "class ConcreteScar(BaseTemplate):\n"
+        "    scar_id = 'concrete'\n"
+        "    name = 'Concrete'\n"
+        "    rule = 'real'\n"
+        "    def matches(self, payload): return True\n"
+        "    def build_output(self, payload): return ScarOutput(additional_context='c')\n",
+        encoding="utf-8",
+    )
+
+    registry = ScarRegistry.load_from_dir(scars_dir)
+
+    # Only the concrete scar with a real id registers; the empty-id base is skipped.
+    assert [s.scar_id for s in registry.all()] == ["concrete"]
+
+
 def test_load_from_dir_skips_unimportable_module(tmp_path: Path):
     scars_dir = tmp_path / "scars"
     _write_scar(scars_dir, "good.py", "good")
