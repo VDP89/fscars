@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.resources as resources
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 
@@ -11,11 +12,17 @@ from fscars.adapters.claude_code import ClaudeCodeAdapter
 from fscars.adapters.codex import CodexAdapter
 from fscars.core.store import StoreLayout, default_store
 
-# Starter scars copied into `.fscars/scars/` on init. These are the documented
-# WARN-level starters — enough to feel the system fire without being noisy.
-# `import_aware_imports.py` is intentionally excluded (advanced, domain-specific;
-# see docs/cookbook_import_aware.md). `_template.py` is copied so users have a
-# local starting point, but the `_` prefix keeps the engine from loading it.
+if TYPE_CHECKING:
+    # Annotation only — `from __future__ import annotations` keeps it a string at
+    # runtime, so we avoid importing the (3.14-deprecated) `importlib.abc` symbol.
+    from importlib.abc import Traversable
+
+# Starter scars copied into `.fscars/scars/` on init by default. These are the
+# documented WARN-level starters — enough to feel the system fire without being
+# noisy. `import_aware_imports.py` is intentionally excluded from the default set
+# (advanced, domain-specific; see docs/cookbook_import_aware.md) and only copied
+# with `--all`. `_template.py` is copied so users have a local starting point,
+# but the `_` prefix keeps the engine from loading it.
 STARTER_SCARS = (
     "large_write_review.py",
     "utc_timestamps.py",
@@ -26,11 +33,22 @@ STARTER_SCARS = (
 )
 
 
-def scaffold_scars(store: StoreLayout) -> list[str]:
+def _all_scar_filenames(source: Traversable) -> list[str]:
+    """Every ``*.py`` scar file in the packaged cookbook, except ``__init__.py``."""
+    return sorted(
+        item.name
+        for item in source.iterdir()
+        if item.name.endswith(".py") and item.name != "__init__.py"
+    )
+
+
+def scaffold_scars(store: StoreLayout, *, include_all: bool = False) -> list[str]:
     """Copy the starter scars into the project's ``.fscars/scars/`` directory.
 
-    Returns the filenames newly written. Existing files are left untouched so a
-    user's edits survive a re-run of ``fscar init``.
+    By default copies the curated :data:`STARTER_SCARS`. With ``include_all`` it
+    copies the entire packaged cookbook (including the advanced
+    ``import_aware_imports.py``). Returns the filenames newly written. Existing
+    files are left untouched so a user's edits survive a re-run of ``fscar init``.
     """
     store.scars_dir.mkdir(parents=True, exist_ok=True)
     try:
@@ -39,8 +57,9 @@ def scaffold_scars(store: StoreLayout) -> list[str]:
         # Cookbook package not installed (broken/partial install) — wire the
         # hook anyway rather than crash init. Unexpected once shipped in the wheel.
         return []
+    names = _all_scar_filenames(source) if include_all else list(STARTER_SCARS)
     written: list[str] = []
-    for name in STARTER_SCARS:
+    for name in names:
         dest = store.scars_dir / name
         if dest.exists():
             continue
@@ -68,15 +87,28 @@ def run(
         "-a",
         help="Which AI coding agent to wire up.",
     ),
+    no_scars: bool = typer.Option(
+        False,
+        "--no-scars",
+        help="Wire the hook but do not scaffold any starter scars.",
+    ),
+    all_scars: bool = typer.Option(
+        False,
+        "--all",
+        help="Scaffold the full cookbook, including advanced scars.",
+    ),
 ) -> None:
     """Create .fscars/ and register the hook entrypoint with the chosen adapter."""
+    if no_scars and all_scars:
+        raise typer.BadParameter("--no-scars and --all are mutually exclusive.")
+
     project_root = path
     project_root.mkdir(parents=True, exist_ok=True)
 
     store = default_store(project_root)
     fresh = not store.exists()
     store.initialize()
-    scaffolded = scaffold_scars(store)
+    scaffolded = [] if no_scars else scaffold_scars(store, include_all=all_scars)
 
     trust_hint = ""
     if adapter == "claude_code":
@@ -97,7 +129,9 @@ def run(
     else:
         typer.echo(f"[OK] fscars already initialized at {store.root}")
     typer.echo(f"[OK] Wired hook entry into {wired}")
-    if scaffolded:
+    if no_scars:
+        typer.echo(f"[OK] Skipped starter scars (--no-scars). Add your own under {store.scars_dir}")
+    elif scaffolded:
         active = [n for n in scaffolded if not n.startswith("_")]
         typer.secho(
             f"[OK] Scaffolded {len(active)} starter scars into {store.scars_dir}",

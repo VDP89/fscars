@@ -132,7 +132,7 @@ The engine reads stdin, parses through the right adapter, dispatches to every ma
 
 ## Cookbook
 
-`fscar init` scaffolds the first five of these into `.fscars/scars/`; the table below is the full catalog shipped in the `cookbook` package (copy `import_aware_imports.py` in by hand if you want it):
+`fscar init` scaffolds the first five of these into `.fscars/scars/`; the table below is the full catalog shipped in the `cookbook` package. Use `fscar init --all` to scaffold every scar (including `import_aware_imports.py`), or `fscar init --no-scars` to wire the hook without copying any:
 
 | File | What it does |
 | --- | --- |

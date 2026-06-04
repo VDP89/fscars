@@ -60,20 +60,27 @@ class ScarRegistry:
         concrete ``FunctionalScar`` subclass *defined in* that module. Shared
         by :meth:`load_builtins` (import-based) and :meth:`load_from_dir`
         (file-path based) so both discovery paths behave identically.
+
+        A scar with an empty ``scar_id`` is never registered: that is a base or
+        template class (e.g. ``ImportAwareWriteScar``), not a real scar, and
+        registering it would surface a blank, id-less row in ``fscar list``.
         """
         scar = getattr(module, "scar", None)
         if isinstance(scar, FunctionalScar):
-            self.register(scar)
+            if scar.scar_id:
+                self.register(scar)
             return
         for _, obj in inspect.getmembers(module, inspect.isclass):
             if obj is FunctionalScar:
                 continue
             if issubclass(obj, FunctionalScar) and obj.__module__ == full_name:
                 try:
-                    self.register(obj())
+                    instance = obj()
                 except TypeError:
                     # Abstract subclass or one requiring constructor args
                     continue
+                if instance.scar_id:
+                    self.register(instance)
 
     @classmethod
     def load_builtins(cls) -> ScarRegistry:

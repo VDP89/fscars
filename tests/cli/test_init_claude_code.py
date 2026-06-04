@@ -78,3 +78,29 @@ def test_init_does_not_overwrite_edited_scars(tmp_path: Path):
     result = runner.invoke(app, ["init", str(tmp_path)])
     assert result.exit_code == 0, result.output
     assert edited.read_text(encoding="utf-8") == "# my edits\n"
+
+
+def test_init_no_scars_skips_scaffold(tmp_path: Path):
+    result = runner.invoke(app, ["init", str(tmp_path), "--no-scars"])
+    assert result.exit_code == 0, result.output
+
+    scars_dir = tmp_path / ".fscars" / "scars"
+    # No scar files scaffolded; the hook is still wired.
+    assert not scars_dir.exists() or not list(scars_dir.glob("*.py"))
+    assert (tmp_path / ".claude" / "settings.json").exists()
+
+
+def test_init_all_scaffolds_advanced_scar(tmp_path: Path):
+    result = runner.invoke(app, ["init", str(tmp_path), "--all"])
+    assert result.exit_code == 0, result.output
+
+    names = {p.name for p in (tmp_path / ".fscars" / "scars").glob("*.py")}
+    # `--all` includes the advanced scar omitted from the default set.
+    assert "import_aware_imports.py" in names
+    assert "large_write_review.py" in names
+
+
+def test_init_no_scars_and_all_are_mutually_exclusive(tmp_path: Path):
+    result = runner.invoke(app, ["init", str(tmp_path), "--no-scars", "--all"])
+    assert result.exit_code != 0
+    assert "mutually exclusive" in result.output
