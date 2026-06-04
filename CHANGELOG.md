@@ -7,15 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Tests
-
-- Added a deterministic test that `_force_utf8_io()` reconfigures both `sys.stdin` and `sys.stdout` from cp1252 to UTF-8, covering the input direction of the v0.4.1 fix (a payload with accented text in `tool_input` is read as UTF-8, not cp1252 mojibake) alongside the existing output-bytes test. Closes the coverage gap noted in the #8 review.
-
 ### Planned
 
 - Demo GIF rendered with VHS (`assets/demo.tape` storyboard ready in planning doc).
 - Logo + brand assets.
 - Homebrew tap.
+
+## [0.5.0] — 2026-06-04
+
+`fscar init` now scaffolds runnable starter scars, so a plain `pip install fscars` actually fires on first run. Until now the engine only discovered scars by importing the `cookbook` package — which the published **wheel did not ship** — so a pip-installed project loaded an empty registry and nothing ever fired. Scars are now **per-project**: copied into `.fscars/scars/`, editable, and loaded by file path at runtime.
+
+### Added
+
+- **`fscar init` scaffolds starter scars.** Init copies the five documented WARN-level starters (`large-write-review`, `utc-timestamps`, `csv-encoding`, `avoid-negative-framing`, `subagent-coverage-report`) plus `_template.py` into `.fscars/scars/`. Re-running init never overwrites files you have edited. The advanced `import_aware_imports` scar is intentionally not scaffolded (see `docs/cookbook_import_aware.md`).
+- **`ScarRegistry.load_from_dir(scars_dir)`** — discovers scars from `*.py` files by file path (`importlib.util.spec_from_file_location`), so discovery no longer requires `cookbook` to be importable. Each module is registered in `sys.modules` under a path-unique name before execution, so a scar module that defines a module-level `@dataclass` loads correctly. Files prefixed with `_` (e.g. `_template.py`) and modules that fail to import are skipped without breaking the hook run.
+
+### Changed
+
+- **The hook entrypoint loads the project's own `.fscars/scars/`, not the global cookbook.** `run_hook` now builds the registry from the project root (resolved via the payload `cwd`), so scars are opt-in per project instead of every packaged cookbook scar firing globally wherever `cookbook` happened to be importable.
+- **`engine.run()` with no registry now runs an empty one instead of `load_builtins()`.** Now that the wheel ships `cookbook`, defaulting to the catalog would let a bare `engine.run(payload)` surprise-fire global scars after `pip install`. Callers choose the registry explicitly: `load_from_dir` for a project, `load_builtins` for the shipped catalog.
+- **`fscar list`** reflects the scars actually active in the project (`.fscars/scars/`) rather than the packaged catalog, and its empty-state message points to `fscar init`.
+- **The `cookbook` package now ships in the wheel** (`[tool.hatch.build.targets.wheel] packages = ["fscars", "cookbook"]`). `fscar init` reads the starter sources from its packaged resources, and the `from cookbook.scars... import` examples in the docs now work after a plain `pip install`.
+
+### Tests
+
+- Added a deterministic test that `_force_utf8_io()` reconfigures both `sys.stdin` and `sys.stdout` from cp1252 to UTF-8, covering the input direction of the v0.4.1 fix (a payload with accented text in `tool_input` is read as UTF-8, not cp1252 mojibake) alongside the existing output-bytes test. Closes the coverage gap noted in the #8 review.
 
 ## [0.4.1] — 2026-06-03
 

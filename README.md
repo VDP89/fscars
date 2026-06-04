@@ -58,12 +58,14 @@ This repository is the first installable implementation of those invariants.
 ## Quick start
 
 ```bash
-pip install fscars            # v0.4.0 on PyPI
+pip install fscars            # v0.5.0 on PyPI
 cd your-project
-fscar init                    # creates .fscars/ + wires Claude Code
-fscar init --adapter codex    # creates .fscars/ + registers native Codex hooks (.codex/hooks.json)
-fscar list                    # 5 starter scars come pre-installed
+fscar init                    # creates .fscars/, scaffolds 5 starter scars, wires Claude Code
+fscar init --adapter codex    # same, but registers native Codex hooks (.codex/hooks.json)
+fscar list                    # the 5 starters, now live under .fscars/scars/
 ```
+
+`fscar init` copies the starter scars into `.fscars/scars/` in your project. They are yours to edit or delete — the hook entrypoint loads that directory at runtime, so a fresh `pip install` fires on the first oversized write.
 
 Three quick wins to try right away:
 
@@ -130,7 +132,7 @@ The engine reads stdin, parses through the right adapter, dispatches to every ma
 
 ## Cookbook
 
-`cookbook/scars/` ships starter scars you can use directly or copy-paste:
+`fscar init` scaffolds the first five of these into `.fscars/scars/`; the table below is the full catalog shipped in the `cookbook` package (copy `import_aware_imports.py` in by hand if you want it):
 
 | File | What it does |
 | --- | --- |

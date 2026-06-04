@@ -15,12 +15,15 @@ import argparse
 import json
 import sys
 from contextlib import suppress
+from pathlib import Path
 from typing import Any, cast
 
 from fscars.adapters.base import Adapter
 from fscars.adapters.claude_code import ClaudeCodeAdapter
 from fscars.adapters.codex import CodexAdapter
 from fscars.core import engine
+from fscars.core.engine import ScarRegistry
+from fscars.core.store import default_store
 
 _ADAPTERS: dict[str, type[Adapter]] = {
     "claude_code": ClaudeCodeAdapter,
@@ -87,7 +90,12 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write("{}")
         return 0
 
-    result = engine.run(payload)
+    # Discover the project's own scars (scaffolded by `fscar init`) rather than
+    # the packaged cookbook catalog: scars are per-project and opt-in, and this
+    # works in a plain `pip install` where `cookbook` is not importable.
+    project_root = Path(payload.cwd) if payload.cwd else Path.cwd()
+    registry = ScarRegistry.load_from_dir(default_store(project_root).scars_dir)
+    result = engine.run(payload, registry=registry)
     sys.stdout.write(adapter.emit_output(result.output, payload))
     return result.exit_code
 

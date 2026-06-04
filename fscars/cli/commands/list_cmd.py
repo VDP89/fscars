@@ -25,8 +25,8 @@ def run(
     ),
 ) -> None:
     """List active scars with last-fire timestamps."""
-    registry = ScarRegistry.load_builtins()
     store = default_store(project)
+    registry = ScarRegistry.load_from_dir(store.scars_dir)
 
     fires = read_fires(root=store.root)
     counts: Counter[str] = Counter(f.scar_id for f in fires)
@@ -47,7 +47,10 @@ def run(
 
     scars = registry.all()
     if not scars:
-        typer.echo("No scars registered. Add one in cookbook/scars/.")
+        typer.echo(
+            "No scars registered. Run `fscar init` to scaffold the starters, "
+            f"or add a module under {store.scars_dir}."
+        )
         return
 
     for scar in scars:

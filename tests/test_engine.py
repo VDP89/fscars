@@ -56,6 +56,20 @@ def test_engine_combines_outputs(tmp_project, payload_factory):
     assert sorted(result.matched_scars) == ["noop-block", "noop-warn"]
 
 
+def test_engine_default_registry_is_empty(tmp_project, payload_factory):
+    """With no registry the engine runs an empty one — it must NOT auto-load
+    the packaged cookbook and surprise-fire global scars (PR #10 review, P2)."""
+    payload = payload_factory(
+        event_type=HookEventType.PRE_TOOL_USE,
+        tool_name="Write",
+        tool_input={"file_path": "x.py", "content": "\n".join("l" for _ in range(300))},
+    )
+    result = run(payload, log_root=tmp_project / ".fscars")
+    assert result.matched_scars == []
+    assert result.output.is_empty
+    assert result.exit_code == 0
+
+
 def test_engine_skips_event_mismatch(tmp_project, payload_factory):
     registry = ScarRegistry()
     registry.register(_NoopWarn())  # registered for UserPromptSubmit
