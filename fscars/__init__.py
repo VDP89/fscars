@@ -9,7 +9,7 @@ from fscars.core.fire import Fire, FireRecord, Severity
 from fscars.core.payload import HookEventType, HookPayload
 from fscars.core.scar import FunctionalScar, Scope
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 __all__ = [
     "Fire",

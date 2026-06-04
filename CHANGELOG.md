@@ -7,15 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- **`fscar init --no-scars` and `fscar init --all`.** `--no-scars` wires the hook without copying any starter scars (for projects that manage their own, or CI). `--all` scaffolds the full packaged cookbook, including the advanced `import_aware_imports.py` omitted from the default set. The two flags are mutually exclusive.
-
 ### Planned
 
 - Demo GIF rendered with VHS (`assets/demo.tape` storyboard ready in planning doc).
 - Logo + brand assets.
 - Homebrew tap.
+
+## [0.6.0] — 2026-06-04
+
+### Added
+
+- **`fscar init --no-scars` and `fscar init --all`.** `--no-scars` wires the hook without copying any starter scars (for projects that manage their own, or CI). `--all` scaffolds the full packaged cookbook, including the advanced `import_aware_imports.py` omitted from the default set. The two flags are mutually exclusive.
+
+### Fixed
+
+- **The registry never registers a scar with an empty `scar_id`.** The fallback that instantiates `FunctionalScar` subclasses found in a module also instantiated base/template classes (e.g. `ImportAwareWriteScar`), whose `scar_id` is empty — so `fscar init --all` surfaced a blank, id-less row in `fscar list`. `_register_module_scars` now skips any scar (module-level or class-scanned) with a falsy `scar_id`.
 
 ## [0.5.0] — 2026-06-04
 
