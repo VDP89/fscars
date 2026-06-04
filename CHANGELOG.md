@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`fscar init --no-scars` and `fscar init --all`.** `--no-scars` wires the hook without copying any starter scars (for projects that manage their own, or CI). `--all` scaffolds the full packaged cookbook, including the advanced `import_aware_imports.py` omitted from the default set. The two flags are mutually exclusive.
+
 ### Planned
 
 - Demo GIF rendered with VHS (`assets/demo.tape` storyboard ready in planning doc).
