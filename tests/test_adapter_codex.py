@@ -57,6 +57,23 @@ def test_parse_official_bash_payload():
     assert payload.raw["tool_use_id"] == "tu-3"
 
 
+def test_parse_permission_request_payload():
+    raw = {
+        "hook_event_name": "PermissionRequest",
+        "tool_name": "Bash",
+        "tool_input": {"command": "rm -rf /", "description": "clean up"},
+        "session_id": "sess-2",
+        "cwd": "/repo",
+        "turn_id": "t-1",
+        "permission_mode": "ask",
+    }
+    payload = CodexAdapter().parse_stdin(raw)
+    assert payload is not None
+    assert payload.event_type == HookEventType.PERMISSION_REQUEST
+    assert payload.tool_name == "Bash"
+    assert payload.content == "rm -rf /"
+
+
 def test_parse_apply_patch_normalizes_to_edit_and_extracts_path():
     patch = (
         "*** Begin Patch\n"
@@ -113,6 +130,29 @@ def test_parse_non_dict_returns_none():
 # ----------------------------------------------------------------------
 # emit_output — Codex native response schema
 # ----------------------------------------------------------------------
+
+
+def test_emit_permission_request_block_denies():
+    out = CodexAdapter().emit_output(
+        ScarOutput(additional_context="too dangerous", block=True),
+        _payload(HookEventType.PERMISSION_REQUEST),
+    )
+    parsed = json.loads(out)
+    hso = parsed["hookSpecificOutput"]
+    assert hso["hookEventName"] == "PermissionRequest"
+    # PermissionRequest uses the nested decision object, not permissionDecision.
+    assert hso["decision"] == {"behavior": "deny", "message": "too dangerous"}
+    assert "permissionDecision" not in hso
+
+
+def test_emit_permission_request_non_block_is_silent():
+    # Deny-or-nothing: a non-blocking scar must NOT emit allow/context, or it
+    # would suppress the user's approval prompt.
+    out = CodexAdapter().emit_output(
+        ScarOutput(additional_context="just a note"),
+        _payload(HookEventType.PERMISSION_REQUEST),
+    )
+    assert out == "{}"
 
 
 def test_emit_pre_tool_use_block_denies():

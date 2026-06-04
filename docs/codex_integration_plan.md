@@ -2,7 +2,9 @@
 
 Status: **native hooks shipped in v0.4.0** (deterministic `PreToolUse` blocking on
 the surfaces Codex supports); the `AGENTS.md` instruction block is retained as an
-operational fallback and audit contract.
+operational fallback and audit contract. A second deny surface,
+**`PermissionRequest`**, was added on top — a scar can deny the approval of a
+`Bash` / `apply_patch` / MCP request.
 
 This document captures the concrete, test-backed integration for transferring
 Functional Scars to OpenAI Codex. OpenAI now ships a stable Codex hook API
@@ -40,7 +42,7 @@ Code adapter:
 | `install(project_root)` | Registers the fscars entrypoint as a native `command` hook in `.codex/hooks.json` (idempotent, preserves foreign hooks), writes the `AGENTS.md` fallback block, and a `.codex/fscars.json` manifest in `"mode": "native-hooks"`. |
 | `uninstall(project_root)` | Removes only the fscars handlers from `.codex/hooks.json`, plus the `AGENTS.md` block and manifest. |
 | `parse_stdin(raw)` | Parses the Codex hook payload into `HookPayload`; `apply_patch` is normalized to `Edit` with the first touched file path extracted. |
-| `emit_output(output, payload)` | Emits the Codex response schema: `permissionDecision: "deny"` on `PreToolUse` block, `decision: "block"` feedback elsewhere, `additionalContext` otherwise, echoing `hookEventName`. |
+| `emit_output(output, payload)` | Emits the Codex response schema: nested `decision: {"behavior": "deny", ...}` on `PermissionRequest` block (silent otherwise — never `allow`), `permissionDecision: "deny"` on `PreToolUse` block, `decision: "block"` feedback elsewhere, `additionalContext` otherwise, echoing `hookEventName`. |
 
 The installer registers a catch-all native hook (no `matcher`) per parity event,
 routing every tool to the single entrypoint, which then filters per scar:
@@ -103,9 +105,27 @@ The single contract change was widening `Adapter.emit_output` to take the
 originating `payload` (optional, default `None`), so Codex can pick a per-event
 response shape. The Claude Code adapter is behavior-unchanged.
 
-## Open verification item
+## PermissionRequest deny surface (added post-v0.4.0)
+
+`PermissionRequest` is Codex's dedicated approval surface. The official contract
+returns a **nested** decision object — distinct from `PreToolUse`:
+
+```json
+{"hookSpecificOutput": {"hookEventName": "PermissionRequest",
+                        "decision": {"behavior": "deny", "message": "..."}}}
+```
+
+Codex resolves multiple hooks as "any `deny` wins; an `allow` lets the request
+proceed without surfacing the approval prompt." fscars therefore treats this as a
+**deny-or-nothing** surface: a blocking scar emits `behavior: "deny"`, and a
+non-blocking scar emits nothing (`{}`). fscars never returns `allow` — auto
+-approving a request the user would otherwise see is not a scar's call to make. A
+scar opts in by setting `event_type = HookEventType.PERMISSION_REQUEST`;
+`tool_matchers` filter by `tool_name` just like `PreToolUse`.
+
+## Resolved verification item — catch-all matcher
 
 fscars registers each event hook **without** a `matcher` (catch-all), relying on
-the engine to filter per scar. If a future Codex parser requires an explicit
-`matcher` for catch-all groups, set `"matcher": ""` in `CodexAdapter._merge_fscars_hooks`.
-This is the one assumption to confirm against a live Codex CLI.
+the engine to filter per scar. Confirmed valid in the PR #7 out-of-band review
+against the official doc: `"*"`, `""`, or an omitted `matcher` all mean match-all.
+No change needed.

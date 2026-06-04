@@ -26,6 +26,7 @@ class HookEventType(str, Enum):
     USER_PROMPT_SUBMIT = "UserPromptSubmit"
     PRE_TOOL_USE = "PreToolUse"
     POST_TOOL_USE = "PostToolUse"
+    PERMISSION_REQUEST = "PermissionRequest"
     STOP = "Stop"
     NOTIFICATION = "Notification"
 

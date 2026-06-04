@@ -4,9 +4,11 @@ Codex now exposes a native hook contract (``~/.codex/hooks.json`` or a repo
 ``.codex/hooks.json``) with the same matcher-group shape Claude Code uses.
 ``install`` registers a single fscars entrypoint as a native ``command`` hook
 for every parity event, so scars can block deterministically on the surfaces
-Codex supports (``PreToolUse`` over ``Bash``/``apply_patch``/MCP can deny a
-call before it runs). The ``AGENTS.md`` block is kept as an operational
-fallback and audit-loop contract, not the primary mechanism.
+Codex supports. Two deny surfaces are wired: ``PreToolUse`` (deny a
+``Bash``/``apply_patch``/MCP call before it runs) and ``PermissionRequest``
+(the dedicated approval surface — a scar's ``deny`` keeps the request from
+being approved). The ``AGENTS.md`` block is kept as an operational fallback and
+audit-loop contract, not the primary mechanism.
 
 Reference: https://developers.openai.com/codex/hooks
 
@@ -35,6 +37,7 @@ _CODEX_TO_CANONICAL = {
     "UserPromptSubmit": HookEventType.USER_PROMPT_SUBMIT,
     "PreToolUse": HookEventType.PRE_TOOL_USE,
     "PostToolUse": HookEventType.POST_TOOL_USE,
+    "PermissionRequest": HookEventType.PERMISSION_REQUEST,
     "Stop": HookEventType.STOP,
     "Notification": HookEventType.NOTIFICATION,
     # Lowercase aliases are convenient for wrapper scripts and tests.
@@ -43,6 +46,7 @@ _CODEX_TO_CANONICAL = {
     "user_prompt_submit": HookEventType.USER_PROMPT_SUBMIT,
     "pre_tool_use": HookEventType.PRE_TOOL_USE,
     "post_tool_use": HookEventType.POST_TOOL_USE,
+    "permission_request": HookEventType.PERMISSION_REQUEST,
     "stop": HookEventType.STOP,
     "notification": HookEventType.NOTIFICATION,
 }
@@ -86,6 +90,7 @@ class CodexAdapter(Adapter):
         "UserPromptSubmit",
         "PreToolUse",
         "PostToolUse",
+        "PermissionRequest",
         "Stop",
     )
 
@@ -144,6 +149,11 @@ class CodexAdapter(Adapter):
     def emit_output(self, output: ScarOutput, payload: HookPayload | None = None) -> str:
         """Serialize ScarOutput in Codex's native hook response schema.
 
+        * ``PermissionRequest`` block → nested ``decision: {"behavior": "deny",
+          "message": ...}`` (the dedicated approval surface; any matching hook's
+          ``deny`` wins). fscars never returns ``allow`` — that would suppress
+          the user's approval prompt, which is not a scar's call to make — so a
+          non-blocking PermissionRequest emits nothing.
         * ``PreToolUse`` block → ``permissionDecision: "deny"`` (the call is
           denied before it runs).
         * Any other event block → ``decision: "block"`` as feedback only; the
@@ -154,8 +164,30 @@ class CodexAdapter(Adapter):
         if output.is_empty:
             return "{}"
 
-        event_name = payload.event_type.value if payload is not None else "PreToolUse"
-        is_pre_tool = payload is None or payload.event_type == HookEventType.PRE_TOOL_USE
+        event_type = payload.event_type if payload is not None else HookEventType.PRE_TOOL_USE
+        event_name = event_type.value
+
+        if event_type == HookEventType.PERMISSION_REQUEST:
+            if not output.block:
+                # Deny-or-nothing: stay silent so Codex's normal approval flow
+                # is untouched (no `allow`, no context injection on this surface).
+                return "{}"
+            message = (
+                output.additional_context
+                or output.system_message
+                or "fscars: blocked by a functional scar."
+            )
+            decision_result: dict[str, Any] = {
+                "hookSpecificOutput": {
+                    "hookEventName": event_name,
+                    "decision": {"behavior": "deny", "message": message},
+                }
+            }
+            if output.system_message:
+                decision_result["systemMessage"] = output.system_message
+            return json.dumps(decision_result, ensure_ascii=False)
+
+        is_pre_tool = event_type == HookEventType.PRE_TOOL_USE
 
         hook_specific: dict[str, Any] = {"hookEventName": event_name}
         result: dict[str, Any] = {}

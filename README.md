@@ -99,7 +99,7 @@ Once installed, every Claude Code tool call passes through the engine. When a sc
 | `fscar audit` | Validate + cross-link fires↔opportunities + render dashboard |
 | `fscar --version` | Print the installed version |
 
-The hook entrypoint is `python -m fscars.run_hook`. Single command across every event type — no per-scar hook scripts. For Codex, `fscar init --adapter codex` registers that entrypoint as a native `command` hook in `.codex/hooks.json` for every parity event and keeps an `AGENTS.md` block as an operational fallback. Run `/hooks` in the Codex CLI once to trust the hooks. `PreToolUse` can deny `Bash` / `apply_patch` / MCP calls; it remains a guardrail, not a complete boundary (WebSearch and other non-shell/non-MCP tools are not intercepted).
+The hook entrypoint is `python -m fscars.run_hook`. Single command across every event type — no per-scar hook scripts. For Codex, `fscar init --adapter codex` registers that entrypoint as a native `command` hook in `.codex/hooks.json` for every parity event and keeps an `AGENTS.md` block as an operational fallback. Run `/hooks` in the Codex CLI once to trust the hooks. Two deny surfaces are wired: `PreToolUse` (deny a `Bash` / `apply_patch` / MCP call before it runs) and `PermissionRequest` (deny the approval of a request — a scar with `event_type = PermissionRequest`). Both remain guardrails, not a complete boundary (WebSearch and other non-shell/non-MCP tools are not intercepted).
 
 ---
 
