@@ -103,8 +103,15 @@ def run(
             f"[OK] Scaffolded {len(active)} starter scars into {store.scars_dir}",
             fg=typer.colors.GREEN,
         )
-    else:
+    elif any(p.name != "_template.py" for p in store.scars_dir.glob("*.py")):
         typer.echo(f"[OK] Starter scars already present in {store.scars_dir}")
+    else:
+        # scaffold_scars found no cookbook resources to copy (broken install).
+        typer.secho(
+            "[!] Could not scaffold starter scars (cookbook resources "
+            "unavailable). The hook is wired; add scars manually.",
+            fg=typer.colors.YELLOW,
+        )
     if trust_hint:
         typer.secho(f"[!] {trust_hint}", fg=typer.colors.YELLOW)
     typer.echo("")

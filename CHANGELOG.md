@@ -20,11 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`fscar init` scaffolds starter scars.** Init copies the five documented WARN-level starters (`large-write-review`, `utc-timestamps`, `csv-encoding`, `avoid-negative-framing`, `subagent-coverage-report`) plus `_template.py` into `.fscars/scars/`. Re-running init never overwrites files you have edited. The advanced `import_aware_imports` scar is intentionally not scaffolded (see `docs/cookbook_import_aware.md`).
-- **`ScarRegistry.load_from_dir(scars_dir)`** — discovers scars from `*.py` files by file path (`importlib.util.spec_from_file_location`), so discovery no longer requires `cookbook` to be importable. Files prefixed with `_` (e.g. `_template.py`) and modules that fail to import are skipped without breaking the hook run.
+- **`ScarRegistry.load_from_dir(scars_dir)`** — discovers scars from `*.py` files by file path (`importlib.util.spec_from_file_location`), so discovery no longer requires `cookbook` to be importable. Each module is registered in `sys.modules` under a path-unique name before execution, so a scar module that defines a module-level `@dataclass` loads correctly. Files prefixed with `_` (e.g. `_template.py`) and modules that fail to import are skipped without breaking the hook run.
 
 ### Changed
 
 - **The hook entrypoint loads the project's own `.fscars/scars/`, not the global cookbook.** `run_hook` now builds the registry from the project root (resolved via the payload `cwd`), so scars are opt-in per project instead of every packaged cookbook scar firing globally wherever `cookbook` happened to be importable.
+- **`engine.run()` with no registry now runs an empty one instead of `load_builtins()`.** Now that the wheel ships `cookbook`, defaulting to the catalog would let a bare `engine.run(payload)` surprise-fire global scars after `pip install`. Callers choose the registry explicitly: `load_from_dir` for a project, `load_builtins` for the shipped catalog.
 - **`fscar list`** reflects the scars actually active in the project (`.fscars/scars/`) rather than the packaged catalog, and its empty-state message points to `fscar init`.
 - **The `cookbook` package now ships in the wheel** (`[tool.hatch.build.targets.wheel] packages = ["fscars", "cookbook"]`). `fscar init` reads the starter sources from its packaged resources, and the `from cookbook.scars... import` examples in the docs now work after a plain `pip install`.
 

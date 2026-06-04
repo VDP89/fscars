@@ -67,6 +67,42 @@ def test_load_from_dir_missing_dir_is_empty(tmp_path: Path):
     assert registry.all() == []
 
 
+def test_load_from_dir_loads_module_with_dataclass(tmp_path: Path):
+    """Regression: a scar module that defines a module-level ``@dataclass`` must
+    load. ``@dataclass`` resolves ``sys.modules[cls.__module__]`` at class-body
+    time, so the module has to be registered in ``sys.modules`` before
+    ``exec_module`` runs — otherwise it silently fails to import and the scar
+    is never registered (PR #10 review, P1)."""
+    scars_dir = tmp_path / "scars"
+    scars_dir.mkdir(parents=True, exist_ok=True)
+    (scars_dir / "dc.py").write_text(
+        "from dataclasses import dataclass\n"
+        "from fscars.core.fire import Severity\n"
+        "from fscars.core.payload import HookEventType\n"
+        "from fscars.core.scar import FunctionalScar, ScarOutput\n"
+        "\n"
+        "@dataclass\n"
+        "class Helper:\n"
+        "    threshold: int = 200\n"
+        "\n"
+        "class DcScar(FunctionalScar):\n"
+        "    scar_id = 'dc-scar'\n"
+        "    name = 'Dataclass scar'\n"
+        "    rule = 'uses a module-level dataclass'\n"
+        "    severity = Severity.WARN\n"
+        "    event_type = HookEventType.USER_PROMPT_SUBMIT\n"
+        "    def matches(self, payload): return True\n"
+        "    def build_output(self, payload): return ScarOutput(additional_context='dc')\n"
+        "\n"
+        "scar = DcScar()\n",
+        encoding="utf-8",
+    )
+
+    registry = ScarRegistry.load_from_dir(scars_dir)
+
+    assert [s.scar_id for s in registry.all()] == ["dc-scar"]
+
+
 def test_load_from_dir_skips_unimportable_module(tmp_path: Path):
     scars_dir = tmp_path / "scars"
     _write_scar(scars_dir, "good.py", "good")

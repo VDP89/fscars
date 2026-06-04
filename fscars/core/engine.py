@@ -7,10 +7,12 @@ engine dispatches to whichever Scars match.
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 import importlib.util
 import inspect
 import pkgutil
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -116,14 +118,22 @@ class ScarRegistry:
         for path in sorted(scars_dir.glob("*.py")):
             if path.name.startswith("_"):
                 continue
-            mod_name = f"_fscars_project_scar_{path.stem}"
+            # Path-unique synthetic name: two projects may have a scar file with
+            # the same stem, and the module MUST be in sys.modules before
+            # exec_module so machinery that resolves `sys.modules[__module__]`
+            # (e.g. a module-level @dataclass) works — otherwise the module
+            # silently fails to import and the scar is never registered.
+            digest = hashlib.sha1(str(path.resolve()).encode("utf-8")).hexdigest()[:12]
+            mod_name = f"_fscars_project_scar_{path.stem}_{digest}"
             try:
                 spec = importlib.util.spec_from_file_location(mod_name, path)
                 if spec is None or spec.loader is None:
                     continue
                 module = importlib.util.module_from_spec(spec)
+                sys.modules[mod_name] = module
                 spec.loader.exec_module(module)
             except Exception:
+                sys.modules.pop(mod_name, None)
                 continue
             registry._register_module_scars(module, mod_name)
         return registry
@@ -139,8 +149,14 @@ def run(
 
     All matching scars run. Outputs are concatenated; if any scar blocks,
     the combined output blocks.
+
+    The caller chooses the registry: the hook entrypoint passes the project's
+    own ``.fscars/scars/`` (``ScarRegistry.load_from_dir``). When no registry is
+    supplied the engine runs an **empty** one — it never auto-loads the packaged
+    cookbook, so importing ``fscars`` cannot surprise-fire global scars. Pass
+    ``ScarRegistry.load_builtins()`` explicitly to run the shipped catalog.
     """
-    registry = registry or ScarRegistry.load_builtins()
+    registry = registry if registry is not None else ScarRegistry()
     candidates = registry.for_event(payload.event_type)
 
     fires: list[Fire] = []
