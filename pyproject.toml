@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fscars"
-version = "0.4.1"
+version = "0.5.0"
 description = "Bolt-on correction primitive for AI coding agents."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -60,7 +60,9 @@ Changelog = "https://github.com/Vdp89/fscars/blob/main/CHANGELOG.md"
 fscar = "fscars.cli.main:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["fscars"]
+# `cookbook` ships in the wheel so `fscar init` can copy the starter scars from
+# its packaged resources after a plain `pip install` (the wheel, not the sdist).
+packages = ["fscars", "cookbook"]
 
 [tool.hatch.build.targets.sdist]
 include = [

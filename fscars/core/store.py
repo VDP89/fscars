@@ -4,11 +4,14 @@ A project that uses fscars has a `.fscars/` directory at its root:
 
     .fscars/
     ├── config.toml
+    ├── scars/              # project-local scar modules (scaffolded by `fscar init`)
+    │   └── *.py
     ├── logs/
     │   └── fires.jsonl
     └── disabled.txt        # optional, one scar_id per line
 
-The engine reads both this layout and an installed cookbook of scar classes.
+The hook entrypoint discovers the project's own scars under `scars/`; the
+packaged cookbook is only the catalog `fscar init` copies starters from.
 """
 
 from __future__ import annotations
@@ -33,6 +36,16 @@ class StoreLayout:
     def opps_file(self) -> Path:
         """Observed opportunities log (input to the validation pipeline)."""
         return self.logs_dir / "opportunities.jsonl"
+
+    @property
+    def scars_dir(self) -> Path:
+        """Project-local scars directory.
+
+        ``fscar init`` scaffolds starter scars here and the hook entrypoint
+        discovers them via ``ScarRegistry.load_from_dir`` — so scars are
+        per-project and editable, not global package state.
+        """
+        return self.root / "scars"
 
     @property
     def disabled_file(self) -> Path:

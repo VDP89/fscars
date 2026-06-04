@@ -47,3 +47,34 @@ def test_init_defaults_to_claude_code(tmp_path: Path):
     settings_path = tmp_path / ".claude" / "settings.json"
     assert settings_path.exists()
     assert ClaudeCodeAdapter.HOOK_COMMAND in _wired_commands(settings_path)
+
+
+def test_init_scaffolds_starter_scars(tmp_path: Path):
+    result = runner.invoke(app, ["init", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+
+    scars_dir = tmp_path / ".fscars" / "scars"
+    assert scars_dir.is_dir()
+    names = {p.name for p in scars_dir.glob("*.py")}
+    expected = {
+        "large_write_review.py",
+        "utc_timestamps.py",
+        "csv_encoding.py",
+        "avoid_negative_framing.py",
+        "subagent_coverage_report.py",
+        "_template.py",
+    }
+    assert expected <= names
+    # The advanced, domain-specific scar is intentionally not scaffolded.
+    assert "import_aware_imports.py" not in names
+
+
+def test_init_does_not_overwrite_edited_scars(tmp_path: Path):
+    runner.invoke(app, ["init", str(tmp_path)])
+    edited = tmp_path / ".fscars" / "scars" / "large_write_review.py"
+    edited.write_text("# my edits\n", encoding="utf-8")
+
+    # Re-running init must leave the user's edits untouched.
+    result = runner.invoke(app, ["init", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+    assert edited.read_text(encoding="utf-8") == "# my edits\n"

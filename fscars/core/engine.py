@@ -8,11 +8,13 @@ engine dispatches to whichever Scars match.
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import inspect
 import pkgutil
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import ModuleType
 
 from fscars.core.fire import Fire
 from fscars.core.log import log_fire
@@ -49,13 +51,37 @@ class ScarRegistry:
     def all(self) -> list[FunctionalScar]:
         return list(self._scars)
 
+    def _register_module_scars(self, module: ModuleType, full_name: str) -> None:
+        """Register the scars a single module exposes.
+
+        Prefers a module-level ``scar`` instance; otherwise instantiates any
+        concrete ``FunctionalScar`` subclass *defined in* that module. Shared
+        by :meth:`load_builtins` (import-based) and :meth:`load_from_dir`
+        (file-path based) so both discovery paths behave identically.
+        """
+        scar = getattr(module, "scar", None)
+        if isinstance(scar, FunctionalScar):
+            self.register(scar)
+            return
+        for _, obj in inspect.getmembers(module, inspect.isclass):
+            if obj is FunctionalScar:
+                continue
+            if issubclass(obj, FunctionalScar) and obj.__module__ == full_name:
+                try:
+                    self.register(obj())
+                except TypeError:
+                    # Abstract subclass or one requiring constructor args
+                    continue
+
     @classmethod
     def load_builtins(cls) -> ScarRegistry:
         """Discover and register all FunctionalScar subclasses under cookbook.scars.
 
-        This is the default registry used by the engine when no custom
-        registry is supplied. Cookbook scars opt-in by exporting an instance
-        named `scar` in their module.
+        This is the catalog of starter scars shipped with the package. It only
+        works when ``cookbook`` is importable (source checkout or a wheel that
+        ships it). The runtime hook entrypoint does NOT use this — it loads the
+        project's own ``.fscars/scars/`` directory via :meth:`load_from_dir`, so
+        scars are per-project and opt-in rather than firing globally.
         """
         registry = cls()
         try:
@@ -70,20 +96,36 @@ class ScarRegistry:
                 module = importlib.import_module(full)
             except Exception:
                 continue
-            scar = getattr(module, "scar", None)
-            if isinstance(scar, FunctionalScar):
-                registry.register(scar)
+            registry._register_module_scars(module, full)
+        return registry
+
+    @classmethod
+    def load_from_dir(cls, scars_dir: Path) -> ScarRegistry:
+        """Discover scars from ``*.py`` files in a project's scars directory.
+
+        Loads each module by file path (no package import required), so it works
+        in a plain ``pip install fscars`` environment where ``cookbook`` is not
+        on the import path. Files whose names start with ``_`` (e.g. the copied
+        ``_template.py``) are skipped. A module that fails to import is skipped
+        rather than breaking the whole hook run.
+        """
+        registry = cls()
+        if not scars_dir.is_dir():
+            return registry
+
+        for path in sorted(scars_dir.glob("*.py")):
+            if path.name.startswith("_"):
                 continue
-            # Also accept a bare class export named after the module
-            for _, obj in inspect.getmembers(module, inspect.isclass):
-                if obj is FunctionalScar:
+            mod_name = f"_fscars_project_scar_{path.stem}"
+            try:
+                spec = importlib.util.spec_from_file_location(mod_name, path)
+                if spec is None or spec.loader is None:
                     continue
-                if issubclass(obj, FunctionalScar) and obj.__module__ == full:
-                    try:
-                        registry.register(obj())
-                    except TypeError:
-                        # Abstract subclass or one requiring constructor args
-                        continue
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+            except Exception:
+                continue
+            registry._register_module_scars(module, mod_name)
         return registry
 
 

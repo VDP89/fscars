@@ -7,6 +7,8 @@ import json
 import sys
 
 from fscars import run_hook
+from fscars.cli.commands.init import scaffold_scars
+from fscars.core.store import default_store
 
 
 def test_run_hook_with_no_input_exits_clean(monkeypatch, capsys):
@@ -46,9 +48,54 @@ def test_run_hook_with_pre_tool_use_invokes_engine(monkeypatch, tmp_path, capsys
     assert captured.out in ("{}", "")
 
 
+def test_run_hook_does_not_fire_in_uninitialized_project(monkeypatch, tmp_path, capsys):
+    """Per-project gating: a >200-line write in a project that never ran
+    `fscar init` (no `.fscars/scars/`) loads an empty registry, so no scar
+    fires even though the file would otherwise trip large-write-review."""
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Write",
+        "tool_input": {
+            "file_path": "demo/big.py",
+            "content": "\n".join(f"line_{i}" for i in range(220)),
+        },
+        "cwd": str(tmp_path),
+        "session_id": "test",
+    }
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
+    monkeypatch.chdir(tmp_path)
+    code = run_hook.main([])
+    captured = capsys.readouterr()
+    assert code == 0
+    assert captured.out in ("{}", "")
+
+
+def test_run_hook_fires_after_scaffold(monkeypatch, tmp_path, capsys):
+    """Companion to the gating test: once `.fscars/scars/` is scaffolded the
+    same oversized Write trips large-write-review (Claude Code shape)."""
+    scaffold_scars(default_store(tmp_path))
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Write",
+        "tool_input": {
+            "file_path": "demo/big.py",
+            "content": "\n".join(f"line_{i}" for i in range(220)),
+        },
+        "cwd": str(tmp_path),
+        "session_id": "test",
+    }
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
+    monkeypatch.chdir(tmp_path)
+    code = run_hook.main([])
+    parsed = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert "large-write-review" in parsed["hookSpecificOutput"]["additionalContext"]
+
+
 def test_run_hook_codex_apply_patch_emits_native_shape(monkeypatch, tmp_path, capsys):
     """A Codex apply_patch over a >200-line .py file routes through the engine
     (large-write-review fires) and emits the Codex native response shape."""
+    scaffold_scars(default_store(tmp_path))  # project must have the scar to fire it
     body = "\n".join(f"+line_{i}" for i in range(220))
     patch = f"*** Begin Patch\n*** Update File: demo/big.py\n@@\n{body}\n*** End Patch\n"
     payload = {
@@ -75,6 +122,7 @@ def test_run_hook_emits_utf8_even_when_stdout_defaults_to_cp1252(monkeypatch, tm
     defaults to cp1252, as it does on a Windows console. Without forcing
     UTF-8, the em-dash is written as byte 0x97 and the host agent (Codex /
     Claude Code) cannot decode the hook output."""
+    scaffold_scars(default_store(tmp_path))  # project must have the scar to fire it
     raw = io.BytesIO()
     monkeypatch.setattr("sys.stdout", io.TextIOWrapper(raw, encoding="cp1252", newline=""))
 
