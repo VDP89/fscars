@@ -157,6 +157,25 @@ Three differences from `PermissionRequest`:
   `payload.raw["last_assistant_message"]` in its `matches()`; `tool_matchers`
   does not apply.
 
+## Context surfaces — SubagentStart / PreCompact / PostCompact (added post-v0.7.0)
+
+These complete native hook parity. None has a `decision` in its output schema, so
+they are context-injection only (a scar cannot block them), and each emit path is
+matched to its exact generated schema:
+
+- **`SubagentStart`** (`additionalProperties: false`; allows `hookSpecificOutput`
+  with `additionalContext`, plus `systemMessage`): inject reminders into a
+  starting subagent via `hookSpecificOutput.additionalContext`.
+- **`PreCompact` / `PostCompact`** (allow only `continue` / `stopReason` /
+  `suppressOutput` / `systemMessage` — no `hookSpecificOutput`, no
+  `additionalContext`, no `decision`): surface context through top-level
+  `systemMessage` only. `PostCompact` is a natural place to re-assert scar
+  context after the transcript is compacted.
+
+`run_hook` returns exit 0 for all three (no exit-2 decision path), as it does for
+`PermissionRequest`. Filtering is by `agent_type` (SubagentStart) or `trigger`
+(compaction), handled in the scar's `matches()` via `payload.raw`.
+
 ## Resolved verification item — catch-all matcher
 
 fscars registers each event hook **without** a `matcher` (catch-all), relying on

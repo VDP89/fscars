@@ -39,7 +39,10 @@ _CODEX_TO_CANONICAL = {
     "PostToolUse": HookEventType.POST_TOOL_USE,
     "PermissionRequest": HookEventType.PERMISSION_REQUEST,
     "Stop": HookEventType.STOP,
+    "SubagentStart": HookEventType.SUBAGENT_START,
     "SubagentStop": HookEventType.SUBAGENT_STOP,
+    "PreCompact": HookEventType.PRE_COMPACT,
+    "PostCompact": HookEventType.POST_COMPACT,
     "Notification": HookEventType.NOTIFICATION,
     # Lowercase aliases are convenient for wrapper scripts and tests.
     "session_start": HookEventType.SESSION_START,
@@ -49,7 +52,10 @@ _CODEX_TO_CANONICAL = {
     "post_tool_use": HookEventType.POST_TOOL_USE,
     "permission_request": HookEventType.PERMISSION_REQUEST,
     "stop": HookEventType.STOP,
+    "subagent_start": HookEventType.SUBAGENT_START,
     "subagent_stop": HookEventType.SUBAGENT_STOP,
+    "pre_compact": HookEventType.PRE_COMPACT,
+    "post_compact": HookEventType.POST_COMPACT,
     "notification": HookEventType.NOTIFICATION,
 }
 
@@ -94,7 +100,10 @@ class CodexAdapter(Adapter):
         "PostToolUse",
         "PermissionRequest",
         "Stop",
+        "SubagentStart",
         "SubagentStop",
+        "PreCompact",
+        "PostCompact",
     )
 
     # ------------------------------------------------------------------
@@ -169,6 +178,11 @@ class CodexAdapter(Adapter):
           ``hookSpecificOutput``); ``systemMessage`` is the surface's only context
           channel. ``run_hook`` exits 2 (a documented ``SubagentStop`` block path,
           unlike ``PermissionRequest``).
+        * ``SubagentStart`` → context only: ``hookSpecificOutput.additionalContext``
+          + ``systemMessage``; its schema has no ``decision``, so it cannot block.
+        * ``PreCompact`` / ``PostCompact`` → context only via top-level
+          ``systemMessage`` (their schema forbids ``hookSpecificOutput``,
+          ``additionalContext`` and ``decision``).
         * Any other event block → ``decision: "block"`` feedback with the
           originating event echoed in ``hookSpecificOutput``; the tool already ran.
         * Non-blocking context is injected via ``additionalContext``.
@@ -218,6 +232,32 @@ class CodexAdapter(Adapter):
             if surface_message:
                 stop_result["systemMessage"] = surface_message
             return json.dumps(stop_result, ensure_ascii=False) if stop_result else "{}"
+
+        if event_type == HookEventType.SUBAGENT_START:
+            # Context-injection only. Schema allows hookSpecificOutput
+            # .additionalContext + systemMessage but NO decision — a scar here
+            # cannot block. See subagent-start.command.output.schema.json
+            start_result: dict[str, Any] = {}
+            if output.additional_context:
+                start_result["hookSpecificOutput"] = {
+                    "hookEventName": event_name,
+                    "additionalContext": output.additional_context,
+                }
+            if output.system_message:
+                start_result["systemMessage"] = output.system_message
+            return json.dumps(start_result, ensure_ascii=False) if start_result else "{}"
+
+        if event_type in (HookEventType.PRE_COMPACT, HookEventType.POST_COMPACT):
+            # Strictest schema: only continue/stopReason/suppressOutput/
+            # systemMessage — NO hookSpecificOutput, NO additionalContext, NO
+            # decision. systemMessage is the only context channel; a scar here
+            # cannot block. See pre-compact/post-compact output schemas.
+            message = output.system_message or output.additional_context
+            return (
+                json.dumps({"systemMessage": message}, ensure_ascii=False)
+                if message
+                else "{}"
+            )
 
         is_pre_tool = event_type == HookEventType.PRE_TOOL_USE
 
