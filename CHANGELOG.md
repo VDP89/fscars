@@ -7,16 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- **Codex `SubagentStop` block surface.** `fscar init --adapter codex` now also registers the `SubagentStop` hook. A scar with `event_type = HookEventType.SUBAGENT_STOP` can keep a subagent from stopping by blocking, via the top-level `decision: "block"` + `reason` shape (e.g. "report batch coverage before you stop"). The output uses only the surface's schema-allowed top-level fields — its schema is `additionalProperties: false` with no `hookSpecificOutput`, so `systemMessage` is the only context channel. Unlike `PermissionRequest`, exit code 2 is a documented block path here, so a block exits 2. Subagent-lifecycle fields (`agent_type`, `last_assistant_message`, …) are preserved on `payload.raw` for the scar's `matches()`. Adds `HookEventType.SUBAGENT_STOP`.
-- **Codex `SubagentStart` / `PreCompact` / `PostCompact` context surfaces — completing native hook parity.** `fscar init --adapter codex` now registers all three. These are context-injection surfaces (no block path in their schemas): a scar with `event_type = HookEventType.SUBAGENT_START` injects `hookSpecificOutput.additionalContext` into a starting subagent; `PRE_COMPACT` / `POST_COMPACT` scars surface context through top-level `systemMessage` (their schema forbids `hookSpecificOutput`, `additionalContext`, and `decision`). Each emit path matches the surface's generated output schema exactly. `run_hook` returns exit 0 for these (no exit-2 decision path). Adds `HookEventType.SUBAGENT_START` / `PRE_COMPACT` / `POST_COMPACT`.
-
 ### Planned
 
 - Demo GIF rendered with VHS (`assets/demo.tape` storyboard ready in planning doc).
 - Logo + brand assets.
 - Homebrew tap.
+
+## [0.8.0] — 2026-06-05
+
+Completes native Codex hook coverage: `fscar init --adapter codex` now registers every documented Codex hook event.
+
+### Added
+
+- **Codex `SubagentStop` block surface.** `fscar init --adapter codex` now also registers the `SubagentStop` hook. A scar with `event_type = HookEventType.SUBAGENT_STOP` can keep a subagent from stopping by blocking, via the top-level `decision: "block"` + `reason` shape (e.g. "report batch coverage before you stop"). The output uses only the surface's schema-allowed top-level fields — its schema is `additionalProperties: false` with no `hookSpecificOutput`, so `systemMessage` is the only context channel. Unlike `PermissionRequest`, exit code 2 is a documented block path here, so a block exits 2. Subagent-lifecycle fields (`agent_type`, `last_assistant_message`, …) are preserved on `payload.raw` for the scar's `matches()`. Adds `HookEventType.SUBAGENT_STOP`.
+- **Codex `SubagentStart` / `PreCompact` / `PostCompact` context surfaces — completing native hook parity.** `fscar init --adapter codex` now registers all three. These are context-injection surfaces (no block path in their schemas): a scar with `event_type = HookEventType.SUBAGENT_START` injects `hookSpecificOutput.additionalContext` into a starting subagent; `PRE_COMPACT` / `POST_COMPACT` scars surface context through top-level `systemMessage` (their schema forbids `hookSpecificOutput`, `additionalContext`, and `decision`). Each emit path matches the surface's generated output schema exactly. `run_hook` returns exit 0 for these (no exit-2 decision path). Adds `HookEventType.SUBAGENT_START` / `PRE_COMPACT` / `POST_COMPACT`.
 
 ## [0.7.0] — 2026-06-05
 
