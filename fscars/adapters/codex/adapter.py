@@ -164,11 +164,13 @@ class CodexAdapter(Adapter):
           non-blocking PermissionRequest emits nothing.
         * ``PreToolUse`` block → ``permissionDecision: "deny"`` (the call is
           denied before it runs).
-        * ``SubagentStop`` (and any other event) block → top-level
-          ``decision: "block"`` + ``reason``: for ``SubagentStop`` this keeps the
-          subagent running with that feedback; for other events the tool already
-          ran. ``run_hook`` still exits 2 to signal the block upstream (a
-          documented ``SubagentStop`` block path, unlike ``PermissionRequest``).
+        * ``SubagentStop`` block → top-level ``decision: "block"`` + ``reason``
+          only (its output schema is ``additionalProperties: false`` with no
+          ``hookSpecificOutput``); ``systemMessage`` is the surface's only context
+          channel. ``run_hook`` exits 2 (a documented ``SubagentStop`` block path,
+          unlike ``PermissionRequest``).
+        * Any other event block → ``decision: "block"`` feedback with the
+          originating event echoed in ``hookSpecificOutput``; the tool already ran.
         * Non-blocking context is injected via ``additionalContext``.
         """
         if output.is_empty:
@@ -196,6 +198,26 @@ class CodexAdapter(Adapter):
             if output.system_message:
                 decision_result["systemMessage"] = output.system_message
             return json.dumps(decision_result, ensure_ascii=False)
+
+        if event_type == HookEventType.SUBAGENT_STOP:
+            # Strict output schema (additionalProperties: false, NO
+            # hookSpecificOutput): only top-level fields are valid. A block uses
+            # decision/reason; systemMessage is the surface's only context channel.
+            # See codex-rs/hooks/schema/generated/subagent-stop.command.output.schema.json
+            stop_result: dict[str, Any] = {}
+            if output.block:
+                stop_result["decision"] = "block"
+                stop_result["reason"] = (
+                    output.additional_context
+                    or output.system_message
+                    or "fscars: blocked by a functional scar."
+                )
+            surface_message = output.system_message or (
+                "" if output.block else output.additional_context
+            )
+            if surface_message:
+                stop_result["systemMessage"] = surface_message
+            return json.dumps(stop_result, ensure_ascii=False) if stop_result else "{}"
 
         is_pre_tool = event_type == HookEventType.PRE_TOOL_USE
 

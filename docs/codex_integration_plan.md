@@ -143,10 +143,15 @@ the top-level feedback form, same as the other non-`PreToolUse` events:
 {"decision": "block", "reason": "report batch coverage before you stop."}
 ```
 
-Two differences from `PermissionRequest`:
+Three differences from `PermissionRequest`:
 
 - **Exit code 2 is a documented block path** for `SubagentStop`, so `run_hook`
   returns the normal block exit code here (no special-casing).
+- **The output schema is top-level only.** `subagent-stop.command.output.schema.json`
+  is `additionalProperties: false` and has no `hookSpecificOutput`; the allowed
+  keys are `continue` / `decision` / `reason` / `stopReason` / `suppressOutput` /
+  `systemMessage`. So the adapter emits `decision`/`reason` (and `systemMessage`
+  as the only context channel) — never `hookSpecificOutput` for this surface.
 - **Filtering is by `agent_type`, not `tool_name`.** The payload carries no tool,
   so a `SubagentStop` scar reads `payload.raw["agent_type"]` /
   `payload.raw["last_assistant_message"]` in its `matches()`; `tool_matchers`

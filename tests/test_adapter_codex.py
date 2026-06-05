@@ -200,10 +200,22 @@ def test_emit_subagent_stop_block_uses_top_level_decision():
         _payload(HookEventType.SUBAGENT_STOP),
     )
     parsed = json.loads(out)
-    # SubagentStop blocks with the top-level decision/reason shape.
+    # SubagentStop blocks with the top-level decision/reason shape only — its
+    # output schema is additionalProperties:false with NO hookSpecificOutput.
     assert parsed["decision"] == "block"
     assert parsed["reason"] == "report coverage first"
-    assert parsed["hookSpecificOutput"]["hookEventName"] == "SubagentStop"
+    assert "hookSpecificOutput" not in parsed
+
+
+def test_emit_subagent_stop_non_block_uses_system_message():
+    # No additionalContext channel on this surface — context rides systemMessage.
+    out = CodexAdapter().emit_output(
+        ScarOutput(additional_context="heads up"),
+        _payload(HookEventType.SUBAGENT_STOP),
+    )
+    parsed = json.loads(out)
+    assert parsed == {"systemMessage": "heads up"}
+    assert "hookSpecificOutput" not in parsed
 
 
 def test_emit_pre_tool_use_block_denies():

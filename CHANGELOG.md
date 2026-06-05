@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Codex `SubagentStop` block surface.** `fscar init --adapter codex` now also registers the `SubagentStop` hook. A scar with `event_type = HookEventType.SUBAGENT_STOP` can keep a subagent from stopping by blocking, via the top-level `decision: "block"` + `reason` shape (e.g. "report batch coverage before you stop"). Unlike `PermissionRequest`, exit code 2 is a documented block path here, so a block exits 2. Subagent-lifecycle fields (`agent_type`, `last_assistant_message`, …) are preserved on `payload.raw` for the scar's `matches()`. Adds `HookEventType.SUBAGENT_STOP`.
+- **Codex `SubagentStop` block surface.** `fscar init --adapter codex` now also registers the `SubagentStop` hook. A scar with `event_type = HookEventType.SUBAGENT_STOP` can keep a subagent from stopping by blocking, via the top-level `decision: "block"` + `reason` shape (e.g. "report batch coverage before you stop"). The output uses only the surface's schema-allowed top-level fields — its schema is `additionalProperties: false` with no `hookSpecificOutput`, so `systemMessage` is the only context channel. Unlike `PermissionRequest`, exit code 2 is a documented block path here, so a block exits 2. Subagent-lifecycle fields (`agent_type`, `last_assistant_message`, …) are preserved on `payload.raw` for the scar's `matches()`. Adds `HookEventType.SUBAGENT_STOP`.
 
 ### Planned
 
