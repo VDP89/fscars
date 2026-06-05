@@ -23,6 +23,7 @@ from fscars.adapters.claude_code import ClaudeCodeAdapter
 from fscars.adapters.codex import CodexAdapter
 from fscars.core import engine
 from fscars.core.engine import ScarRegistry
+from fscars.core.payload import HookEventType
 from fscars.core.store import default_store
 
 _ADAPTERS: dict[str, type[Adapter]] = {
@@ -97,6 +98,13 @@ def main(argv: list[str] | None = None) -> int:
     registry = ScarRegistry.load_from_dir(default_store(project_root).scars_dir)
     result = engine.run(payload, registry=registry)
     sys.stdout.write(adapter.emit_output(result.output, payload))
+
+    # PermissionRequest conveys a denial through the JSON decision object only.
+    # Unlike PreToolUse / Stop / etc., the Codex docs do not document exit code 2
+    # as a decision path for it, so a deny here returns 0 and relies on the
+    # `decision: {"behavior": "deny"}` contract. See developers.openai.com/codex/hooks.
+    if payload.event_type == HookEventType.PERMISSION_REQUEST:
+        return 0
     return result.exit_code
 
 

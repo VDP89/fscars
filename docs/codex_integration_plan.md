@@ -121,7 +121,16 @@ proceed without surfacing the approval prompt." fscars therefore treats this as 
 non-blocking scar emits nothing (`{}`). fscars never returns `allow` — auto
 -approving a request the user would otherwise see is not a scar's call to make. A
 scar opts in by setting `event_type = HookEventType.PERMISSION_REQUEST`;
-`tool_matchers` filter by `tool_name` just like `PreToolUse`.
+`tool_matchers` filter by `tool_name` just like `PreToolUse`. Two surface-specific
+details (confirmed in the PR #12 review against the doc):
+
+- **Exit code 0.** The deny travels through the JSON decision object only; the
+  doc does not list exit code 2 as a decision path for `PermissionRequest`, so
+  `run_hook` returns 0 here (unlike `PreToolUse`/`Stop`, where exit 2 also blocks).
+- **Canonical `apply_patch`.** For the tool-use events, `apply_patch` is bridged
+  to `Edit` so the cross-platform cookbook scars fire. On `PermissionRequest` —
+  a Codex-specific surface — the canonical `apply_patch` name is preserved, so a
+  scar uses `tool_matchers = ("apply_patch",)`.
 
 ## Resolved verification item — catch-all matcher
 

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Codex `PermissionRequest` deny surface.** `fscar init --adapter codex` now also registers the `PermissionRequest` hook — Codex's dedicated approval surface. A scar with `event_type = HookEventType.PERMISSION_REQUEST` (and optional `tool_matchers`) can deny the approval of a `Bash` / `apply_patch` / MCP request via the nested `decision: {"behavior": "deny", ...}` shape. It is deny-or-nothing: a non-blocking scar emits nothing, and fscars never returns `allow` (which would suppress the user's approval prompt). Adds `HookEventType.PERMISSION_REQUEST`.
+- **Codex `PermissionRequest` deny surface.** `fscar init --adapter codex` now also registers the `PermissionRequest` hook — Codex's dedicated approval surface. A scar with `event_type = HookEventType.PERMISSION_REQUEST` (and optional `tool_matchers`) can deny the approval of a `Bash` / `apply_patch` / MCP request via the nested `decision: {"behavior": "deny", ...}` shape. It is deny-or-nothing: a non-blocking scar emits nothing, and fscars never returns `allow` (which would suppress the user's approval prompt). The deny is conveyed through the JSON decision only — `run_hook` exits `0` for `PermissionRequest` (the Codex docs do not document exit code 2 as a decision path for this surface). On `PermissionRequest`, `apply_patch` keeps its canonical tool name (it is not bridged to `Edit`), so `tool_matchers = ("apply_patch",)` fires. Adds `HookEventType.PERMISSION_REQUEST`.
 
 ### Planned
 

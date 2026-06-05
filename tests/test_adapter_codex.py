@@ -74,6 +74,25 @@ def test_parse_permission_request_payload():
     assert payload.content == "rm -rf /"
 
 
+def test_parse_permission_request_apply_patch_keeps_canonical_name():
+    # On PermissionRequest, apply_patch is NOT renamed to Edit: the surface is
+    # Codex-specific, so a scar matches on the canonical `apply_patch`. The
+    # file_path is still extracted for path-scoped scars.
+    payload = CodexAdapter().parse_stdin(
+        {
+            "hook_event_name": "PermissionRequest",
+            "tool_name": "apply_patch",
+            "tool_input": {"command": "*** Begin Patch\n*** Update File: src/app.py\n"},
+            "session_id": "s",
+            "cwd": "/repo",
+        }
+    )
+    assert payload is not None
+    assert payload.event_type == HookEventType.PERMISSION_REQUEST
+    assert payload.tool_name == "apply_patch"
+    assert payload.file_path == "src/app.py"
+
+
 def test_parse_apply_patch_normalizes_to_edit_and_extracts_path():
     patch = (
         "*** Begin Patch\n"

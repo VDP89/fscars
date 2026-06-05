@@ -128,7 +128,8 @@ def test_run_hook_codex_permission_request_denies(monkeypatch, tmp_path, capsys)
     monkeypatch.chdir(tmp_path)
     code = run_hook.main(["--adapter", "codex"])
     parsed = json.loads(capsys.readouterr().out)
-    assert code == 2
+    # PermissionRequest conveys the deny via JSON only — exit 0, not 2.
+    assert code == 0
     decision = parsed["hookSpecificOutput"]["decision"]
     assert decision["behavior"] == "deny"
     assert "rm -rf" in decision["message"]

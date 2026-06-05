@@ -116,13 +116,18 @@ class CodexAdapter(Adapter):
         tool_name = raw.get("tool_name") or raw.get("toolName")
         tool_input = dict(raw.get("tool_input") or raw.get("toolInput") or {})
 
-        # Normalize apply_patch into the Write/Edit world the scars expect, and
-        # surface a concrete file_path so path-scoped scars can match.
+        # Surface a concrete file_path so path-scoped scars can match, and bridge
+        # apply_patch into the Write/Edit world the cross-platform cookbook scars
+        # expect. The rename is skipped for PermissionRequest: that surface is
+        # Codex-specific, so a scar there matches on Codex's canonical tool name
+        # (`apply_patch`) — renaming it to "Edit" would make tool_matchers
+        # =("apply_patch",) silently miss.
         if tool_name in _APPLY_PATCH_NAMES:
             patched = self._first_patched_path(tool_input)
             if patched and not tool_input.get("file_path"):
                 tool_input["file_path"] = patched
-            tool_name = "Edit"
+            if canonical != HookEventType.PERMISSION_REQUEST:
+                tool_name = "Edit"
 
         try:
             return HookPayload(
