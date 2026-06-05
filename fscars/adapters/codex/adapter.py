@@ -39,6 +39,7 @@ _CODEX_TO_CANONICAL = {
     "PostToolUse": HookEventType.POST_TOOL_USE,
     "PermissionRequest": HookEventType.PERMISSION_REQUEST,
     "Stop": HookEventType.STOP,
+    "SubagentStop": HookEventType.SUBAGENT_STOP,
     "Notification": HookEventType.NOTIFICATION,
     # Lowercase aliases are convenient for wrapper scripts and tests.
     "session_start": HookEventType.SESSION_START,
@@ -48,6 +49,7 @@ _CODEX_TO_CANONICAL = {
     "post_tool_use": HookEventType.POST_TOOL_USE,
     "permission_request": HookEventType.PERMISSION_REQUEST,
     "stop": HookEventType.STOP,
+    "subagent_stop": HookEventType.SUBAGENT_STOP,
     "notification": HookEventType.NOTIFICATION,
 }
 
@@ -92,6 +94,7 @@ class CodexAdapter(Adapter):
         "PostToolUse",
         "PermissionRequest",
         "Stop",
+        "SubagentStop",
     )
 
     # ------------------------------------------------------------------
@@ -161,9 +164,13 @@ class CodexAdapter(Adapter):
           non-blocking PermissionRequest emits nothing.
         * ``PreToolUse`` block → ``permissionDecision: "deny"`` (the call is
           denied before it runs).
-        * Any other event block → ``decision: "block"`` as feedback only; the
-          tool already ran (or there is no tool), and ``run_hook`` still exits
-          with code 2 to signal the block upstream.
+        * ``SubagentStop`` block → top-level ``decision: "block"`` + ``reason``
+          only (its output schema is ``additionalProperties: false`` with no
+          ``hookSpecificOutput``); ``systemMessage`` is the surface's only context
+          channel. ``run_hook`` exits 2 (a documented ``SubagentStop`` block path,
+          unlike ``PermissionRequest``).
+        * Any other event block → ``decision: "block"`` feedback with the
+          originating event echoed in ``hookSpecificOutput``; the tool already ran.
         * Non-blocking context is injected via ``additionalContext``.
         """
         if output.is_empty:
@@ -191,6 +198,26 @@ class CodexAdapter(Adapter):
             if output.system_message:
                 decision_result["systemMessage"] = output.system_message
             return json.dumps(decision_result, ensure_ascii=False)
+
+        if event_type == HookEventType.SUBAGENT_STOP:
+            # Strict output schema (additionalProperties: false, NO
+            # hookSpecificOutput): only top-level fields are valid. A block uses
+            # decision/reason; systemMessage is the surface's only context channel.
+            # See codex-rs/hooks/schema/generated/subagent-stop.command.output.schema.json
+            stop_result: dict[str, Any] = {}
+            if output.block:
+                stop_result["decision"] = "block"
+                stop_result["reason"] = (
+                    output.additional_context
+                    or output.system_message
+                    or "fscars: blocked by a functional scar."
+                )
+            surface_message = output.system_message or (
+                "" if output.block else output.additional_context
+            )
+            if surface_message:
+                stop_result["systemMessage"] = surface_message
+            return json.dumps(stop_result, ensure_ascii=False) if stop_result else "{}"
 
         is_pre_tool = event_type == HookEventType.PRE_TOOL_USE
 

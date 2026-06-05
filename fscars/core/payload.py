@@ -28,6 +28,7 @@ class HookEventType(str, Enum):
     POST_TOOL_USE = "PostToolUse"
     PERMISSION_REQUEST = "PermissionRequest"
     STOP = "Stop"
+    SUBAGENT_STOP = "SubagentStop"
     NOTIFICATION = "Notification"
 
 
