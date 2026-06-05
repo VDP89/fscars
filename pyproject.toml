@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fscars"
-version = "0.6.0"
+version = "0.7.0"
 description = "Bolt-on correction primitive for AI coding agents."
 readme = "README.md"
 requires-python = ">=3.10"
