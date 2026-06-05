@@ -132,6 +132,26 @@ details (confirmed in the PR #12 review against the doc):
   a Codex-specific surface — the canonical `apply_patch` name is preserved, so a
   scar uses `tool_matchers = ("apply_patch",)`.
 
+## SubagentStop block surface (added post-v0.7.0)
+
+`SubagentStop` fires when a Codex subagent is about to stop. A scar with
+`event_type = HookEventType.SUBAGENT_STOP` can block it — useful as a gate
+("the batch subagent must report coverage before it stops"). The block shape is
+the top-level feedback form, same as the other non-`PreToolUse` events:
+
+```json
+{"decision": "block", "reason": "report batch coverage before you stop."}
+```
+
+Two differences from `PermissionRequest`:
+
+- **Exit code 2 is a documented block path** for `SubagentStop`, so `run_hook`
+  returns the normal block exit code here (no special-casing).
+- **Filtering is by `agent_type`, not `tool_name`.** The payload carries no tool,
+  so a `SubagentStop` scar reads `payload.raw["agent_type"]` /
+  `payload.raw["last_assistant_message"]` in its `matches()`; `tool_matchers`
+  does not apply.
+
 ## Resolved verification item — catch-all matcher
 
 fscars registers each event hook **without** a `matcher` (catch-all), relying on

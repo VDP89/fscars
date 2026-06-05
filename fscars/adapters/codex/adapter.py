@@ -39,6 +39,7 @@ _CODEX_TO_CANONICAL = {
     "PostToolUse": HookEventType.POST_TOOL_USE,
     "PermissionRequest": HookEventType.PERMISSION_REQUEST,
     "Stop": HookEventType.STOP,
+    "SubagentStop": HookEventType.SUBAGENT_STOP,
     "Notification": HookEventType.NOTIFICATION,
     # Lowercase aliases are convenient for wrapper scripts and tests.
     "session_start": HookEventType.SESSION_START,
@@ -48,6 +49,7 @@ _CODEX_TO_CANONICAL = {
     "post_tool_use": HookEventType.POST_TOOL_USE,
     "permission_request": HookEventType.PERMISSION_REQUEST,
     "stop": HookEventType.STOP,
+    "subagent_stop": HookEventType.SUBAGENT_STOP,
     "notification": HookEventType.NOTIFICATION,
 }
 
@@ -92,6 +94,7 @@ class CodexAdapter(Adapter):
         "PostToolUse",
         "PermissionRequest",
         "Stop",
+        "SubagentStop",
     )
 
     # ------------------------------------------------------------------
@@ -161,9 +164,11 @@ class CodexAdapter(Adapter):
           non-blocking PermissionRequest emits nothing.
         * ``PreToolUse`` block → ``permissionDecision: "deny"`` (the call is
           denied before it runs).
-        * Any other event block → ``decision: "block"`` as feedback only; the
-          tool already ran (or there is no tool), and ``run_hook`` still exits
-          with code 2 to signal the block upstream.
+        * ``SubagentStop`` (and any other event) block → top-level
+          ``decision: "block"`` + ``reason``: for ``SubagentStop`` this keeps the
+          subagent running with that feedback; for other events the tool already
+          ran. ``run_hook`` still exits 2 to signal the block upstream (a
+          documented ``SubagentStop`` block path, unlike ``PermissionRequest``).
         * Non-blocking context is injected via ``additionalContext``.
         """
         if output.is_empty:

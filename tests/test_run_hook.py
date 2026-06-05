@@ -135,6 +135,47 @@ def test_run_hook_codex_permission_request_denies(monkeypatch, tmp_path, capsys)
     assert "rm -rf" in decision["message"]
 
 
+def test_run_hook_codex_subagent_stop_blocks(monkeypatch, tmp_path, capsys):
+    """A SubagentStop scar that blocks emits the top-level decision:block shape
+    and exits 2 (a documented SubagentStop block path)."""
+    scars_dir = default_store(tmp_path).scars_dir
+    scars_dir.mkdir(parents=True, exist_ok=True)
+    (scars_dir / "stop_gate.py").write_text(
+        "from fscars.core.fire import Severity\n"
+        "from fscars.core.payload import HookEventType, HookPayload\n"
+        "from fscars.core.scar import FunctionalScar, ScarOutput\n"
+        "\n"
+        "class CoverageGate(FunctionalScar):\n"
+        "    scar_id = 'subagent-coverage-gate'\n"
+        "    name = 'Subagent must report coverage'\n"
+        "    rule = 'a batch subagent must report coverage before stopping'\n"
+        "    severity = Severity.BLOCK\n"
+        "    event_type = HookEventType.SUBAGENT_STOP\n"
+        "    def matches(self, payload: HookPayload) -> bool:\n"
+        "        msg = payload.raw.get('last_assistant_message', '')\n"
+        "        return 'coverage' not in msg.lower()\n"
+        "    def build_output(self, payload: HookPayload) -> ScarOutput:\n"
+        "        return ScarOutput(additional_context='report batch coverage first', block=True)\n"
+        "\n"
+        "scar = CoverageGate()\n",
+        encoding="utf-8",
+    )
+    payload = {
+        "hook_event_name": "SubagentStop",
+        "cwd": str(tmp_path),
+        "session_id": "t",
+        "agent_type": "reviewer",
+        "last_assistant_message": "all done",
+    }
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
+    monkeypatch.chdir(tmp_path)
+    code = run_hook.main(["--adapter", "codex"])
+    parsed = json.loads(capsys.readouterr().out)
+    assert code == 2
+    assert parsed["decision"] == "block"
+    assert "coverage" in parsed["reason"].lower()
+
+
 def test_run_hook_codex_apply_patch_emits_native_shape(monkeypatch, tmp_path, capsys):
     """A Codex apply_patch over a >200-line .py file routes through the engine
     (large-write-review fires) and emits the Codex native response shape."""

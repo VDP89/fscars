@@ -93,6 +93,26 @@ def test_parse_permission_request_apply_patch_keeps_canonical_name():
     assert payload.file_path == "src/app.py"
 
 
+def test_parse_subagent_stop_payload():
+    raw = {
+        "hook_event_name": "SubagentStop",
+        "session_id": "s",
+        "cwd": "/repo",
+        "turn_id": "t-7",
+        "agent_id": "a-1",
+        "agent_type": "reviewer",
+        "last_assistant_message": "done",
+        "stop_hook_active": False,
+    }
+    payload = CodexAdapter().parse_stdin(raw)
+    assert payload is not None
+    assert payload.event_type == HookEventType.SUBAGENT_STOP
+    assert payload.tool_name is None
+    # Subagent-lifecycle fields are preserved on raw for a scar's matches().
+    assert payload.raw["agent_type"] == "reviewer"
+    assert payload.raw["last_assistant_message"] == "done"
+
+
 def test_parse_apply_patch_normalizes_to_edit_and_extracts_path():
     patch = (
         "*** Begin Patch\n"
@@ -172,6 +192,18 @@ def test_emit_permission_request_non_block_is_silent():
         _payload(HookEventType.PERMISSION_REQUEST),
     )
     assert out == "{}"
+
+
+def test_emit_subagent_stop_block_uses_top_level_decision():
+    out = CodexAdapter().emit_output(
+        ScarOutput(additional_context="report coverage first", block=True),
+        _payload(HookEventType.SUBAGENT_STOP),
+    )
+    parsed = json.loads(out)
+    # SubagentStop blocks with the top-level decision/reason shape.
+    assert parsed["decision"] == "block"
+    assert parsed["reason"] == "report coverage first"
+    assert parsed["hookSpecificOutput"]["hookEventName"] == "SubagentStop"
 
 
 def test_emit_pre_tool_use_block_denies():
