@@ -218,6 +218,41 @@ def test_emit_subagent_stop_non_block_uses_system_message():
     assert "hookSpecificOutput" not in parsed
 
 
+def test_emit_subagent_start_injects_context_no_decision():
+    out = CodexAdapter().emit_output(
+        ScarOutput(additional_context="watch for X", block=True),  # block ignored here
+        _payload(HookEventType.SUBAGENT_START),
+    )
+    parsed = json.loads(out)
+    # SubagentStart schema: hookSpecificOutput.additionalContext, never decision.
+    assert parsed["hookSpecificOutput"] == {
+        "hookEventName": "SubagentStart",
+        "additionalContext": "watch for X",
+    }
+    assert "decision" not in parsed
+
+
+def test_emit_precompact_systemmessage_only():
+    out = CodexAdapter().emit_output(
+        ScarOutput(additional_context="about to compact"),
+        _payload(HookEventType.PRE_COMPACT),
+    )
+    parsed = json.loads(out)
+    # Strictest schema: only systemMessage — no hookSpecificOutput/additionalContext/decision.
+    assert parsed == {"systemMessage": "about to compact"}
+
+
+def test_emit_postcompact_block_does_not_emit_decision():
+    # Compaction surfaces have no block path; a block must not leak `decision`.
+    out = CodexAdapter().emit_output(
+        ScarOutput(additional_context="re-read the scars", block=True),
+        _payload(HookEventType.POST_COMPACT),
+    )
+    parsed = json.loads(out)
+    assert parsed == {"systemMessage": "re-read the scars"}
+    assert "decision" not in parsed and "hookSpecificOutput" not in parsed
+
+
 def test_emit_pre_tool_use_block_denies():
     out = CodexAdapter().emit_output(
         ScarOutput(additional_context="don't do that", block=True),

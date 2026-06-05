@@ -31,6 +31,17 @@ _ADAPTERS: dict[str, type[Adapter]] = {
     "codex": CodexAdapter,
 }
 
+# Surfaces where exit code 2 is NOT a documented block path: the block (if any)
+# is carried by the JSON response, so run_hook returns 0 for them.
+_EXIT_ZERO_EVENTS = frozenset(
+    {
+        HookEventType.PERMISSION_REQUEST,
+        HookEventType.SUBAGENT_START,
+        HookEventType.PRE_COMPACT,
+        HookEventType.POST_COMPACT,
+    }
+)
+
 
 def _force_utf8_io() -> None:
     """Force stdin/stdout to UTF-8 regardless of platform.
@@ -99,11 +110,12 @@ def main(argv: list[str] | None = None) -> int:
     result = engine.run(payload, registry=registry)
     sys.stdout.write(adapter.emit_output(result.output, payload))
 
-    # PermissionRequest conveys a denial through the JSON decision object only.
-    # Unlike PreToolUse / Stop / etc., the Codex docs do not document exit code 2
-    # as a decision path for it, so a deny here returns 0 and relies on the
-    # `decision: {"behavior": "deny"}` contract. See developers.openai.com/codex/hooks.
-    if payload.event_type == HookEventType.PERMISSION_REQUEST:
+    # Some Codex surfaces do not use exit code 2 as a decision path, so a block
+    # there must NOT exit 2: PermissionRequest conveys its denial through the
+    # nested JSON decision object, and SubagentStart / Pre-PostCompact are
+    # context-injection surfaces whose schemas have no `decision` at all. Their
+    # output is the contract; exit 0. See developers.openai.com/codex/hooks.
+    if payload.event_type in _EXIT_ZERO_EVENTS:
         return 0
     return result.exit_code
 
