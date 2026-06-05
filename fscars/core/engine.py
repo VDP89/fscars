@@ -174,7 +174,12 @@ def run(
 
     for scar in candidates:
         if (
-            scar.event_type in (HookEventType.PRE_TOOL_USE, HookEventType.POST_TOOL_USE)
+            scar.event_type
+            in (
+                HookEventType.PRE_TOOL_USE,
+                HookEventType.POST_TOOL_USE,
+                HookEventType.PERMISSION_REQUEST,
+            )
             and not scar.applies_to_tool(payload.tool_name)
         ):
             continue

@@ -92,6 +92,49 @@ def test_run_hook_fires_after_scaffold(monkeypatch, tmp_path, capsys):
     assert "large-write-review" in parsed["hookSpecificOutput"]["additionalContext"]
 
 
+def test_run_hook_codex_permission_request_denies(monkeypatch, tmp_path, capsys):
+    """A project scar targeting PermissionRequest that blocks routes through the
+    engine and emits the Codex nested deny decision."""
+    scars_dir = default_store(tmp_path).scars_dir
+    scars_dir.mkdir(parents=True, exist_ok=True)
+    (scars_dir / "deny_rm.py").write_text(
+        "from fscars.core.fire import Severity\n"
+        "from fscars.core.payload import HookEventType, HookPayload\n"
+        "from fscars.core.scar import FunctionalScar, ScarOutput\n"
+        "\n"
+        "class DenyRm(FunctionalScar):\n"
+        "    scar_id = 'deny-rm-rf'\n"
+        "    name = 'Deny rm -rf'\n"
+        "    rule = 'never rm -rf at the root'\n"
+        "    severity = Severity.BLOCK\n"
+        "    event_type = HookEventType.PERMISSION_REQUEST\n"
+        "    tool_matchers = ('Bash',)\n"
+        "    def matches(self, payload: HookPayload) -> bool:\n"
+        "        return 'rm -rf' in (payload.content or '')\n"
+        "    def build_output(self, payload: HookPayload) -> ScarOutput:\n"
+        "        return ScarOutput(additional_context='blocked: rm -rf', block=True)\n"
+        "\n"
+        "scar = DenyRm()\n",
+        encoding="utf-8",
+    )
+    payload = {
+        "hook_event_name": "PermissionRequest",
+        "tool_name": "Bash",
+        "tool_input": {"command": "rm -rf /"},
+        "cwd": str(tmp_path),
+        "session_id": "t",
+    }
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
+    monkeypatch.chdir(tmp_path)
+    code = run_hook.main(["--adapter", "codex"])
+    parsed = json.loads(capsys.readouterr().out)
+    # PermissionRequest conveys the deny via JSON only — exit 0, not 2.
+    assert code == 0
+    decision = parsed["hookSpecificOutput"]["decision"]
+    assert decision["behavior"] == "deny"
+    assert "rm -rf" in decision["message"]
+
+
 def test_run_hook_codex_apply_patch_emits_native_shape(monkeypatch, tmp_path, capsys):
     """A Codex apply_patch over a >200-line .py file routes through the engine
     (large-write-review fires) and emits the Codex native response shape."""
